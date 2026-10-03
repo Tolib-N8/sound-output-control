@@ -20,8 +20,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.tolibnosirov.Soundflow
         PRODUCT_NAME: Soundflow
-        MARKETING_VERSION: "1.1.0"
-        CURRENT_PROJECT_VERSION: "130"
+        MARKETING_VERSION: "1.1.1"
+        CURRENT_PROJECT_VERSION: "131"
         INFOPLIST_FILE: Soundflow/Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: Soundflow/Resources/Soundflow.entitlements
         CODE_SIGN_STYLE: Automatic
