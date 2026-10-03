@@ -28,5 +28,9 @@ python3 -m dmgbuild -s scripts/dmg_settings.py \
   -D app="$APP" -D background="$WORK/art/background.tiff" -D icon="$APP/Contents/Resources/AppIcon.icns" \
   "Soundflow $VERSION" "$DMG"
 hdiutil verify "$DMG" >/dev/null
+# Gatekeeper rejects bundles with Finder metadata, so check the copy users will actually get.
+MNT=$(hdiutil attach -nobrowse -readonly "$DMG" 2>/dev/null | tail -1 | cut -f3-)
+codesign --verify --deep --strict "$MNT/Soundflow.app"
+hdiutil detach "$MNT" -quiet
 shasum -a 256 "$DMG"
 echo "✓ $DMG"

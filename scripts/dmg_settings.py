@@ -27,4 +27,3 @@ icon_size = 128
 text_size = 13
 arrange_by = None
 icon_locations = {app_name: (170, 180), "Программы": (490, 180)}
-hide_extensions = [app_name]
