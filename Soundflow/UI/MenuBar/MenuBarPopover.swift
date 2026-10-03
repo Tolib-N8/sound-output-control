@@ -87,7 +87,7 @@ struct MenuBarPopover: View {
     }
 
     private var apps: some View {
-        let apps = model.apps.sorted { $0.isPlaying && !$1.isPlaying }
+        let apps = model.listedApps.sorted { $0.isPlaying && !$1.isPlaying }
         let playing = apps.filter(\.isPlaying).count
         return VStack(alignment: .leading, spacing: 4) {
             HStack {

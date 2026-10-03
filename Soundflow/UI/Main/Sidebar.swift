@@ -100,7 +100,7 @@ struct SidebarDeviceRow: View {
     @State private var targeted = false
 
     var body: some View {
-        let count = model.apps(on: device.uid).count
+        let count = model.listedApps(on: device.uid).count
         let highlighted = isHighlighted
         SidebarRow(icon: device.kind.icon, name: device.name, subtitle: model.deviceSubtitle(device),
                    badge: device.uid == model.devices.defaultOutputUID ? "ОСН" : nil, highlighted: highlighted) {
@@ -109,8 +109,7 @@ struct SidebarDeviceRow: View {
             }
         }
         .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(Theme.accent, lineWidth: targeted ? 1.5 : 0))
-        .iconTapTrigger()
-        .onTapGesture { model.selection = .device(device.uid) }
+        .iconTap { model.selection = .device(device.uid) }
         .contextMenu {
             Button("Сделать основным") { model.makeDefault(device.uid) }
             Button("Открыть детали") { model.selection = .device(device.uid) }
@@ -141,8 +140,7 @@ struct SidebarOfflineRow: View {
         SidebarRow(icon: device.kind.icon, name: device.name, subtitle: "Не подключено", dimmed: true, subtitleColor: Theme.danger) {
             if count > 0 { Text("\(count)").font(.mono(11)).foregroundStyle(Theme.text3) }
         }
-        .iconTapTrigger()
-        .onTapGesture { model.selection = .device(uid) }
+        .iconTap { model.selection = .device(uid) }
     }
 }
 
@@ -152,7 +150,7 @@ struct SidebarMultiRow: View {
     @State private var targeted = false
 
     var body: some View {
-        let count = model.apps(onMulti: multi).count
+        let count = model.listedApps(onMulti: multi).count
         let selected = model.selection == .multiOutput(multi.id)
         SidebarRow(icon: "git-merge", name: multi.name,
                    subtitle: "Агрегат · " + countText(multi.deviceUIDs.count, "устройство", "устройства", "устройств"),
@@ -160,8 +158,7 @@ struct SidebarMultiRow: View {
             if count > 0 { Text("\(count)").font(.mono(11)).foregroundStyle(Theme.text3) }
         }
         .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(Theme.accent, lineWidth: targeted ? 1.5 : 0))
-        .iconTapTrigger()
-        .onTapGesture { model.selection = .multiOutput(multi.id) }
+        .iconTap { model.selection = .multiOutput(multi.id) }
         .contextMenu {
             Button("Изменить…") { model.multiOutputDraft = multi }
             Button("Удалить", role: .destructive) { model.deleteMultiOutput(multi.id) }
@@ -193,8 +190,7 @@ struct SidebarProfileRow: View {
         .background(RoundedRectangle(cornerRadius: 8).fill(hover ? Theme.surface2.opacity(0.6) : .clear))
         .contentShape(Rectangle())
         .onHover { hover = $0 }
-        .iconTapTrigger()
-        .onTapGesture { model.profiles.toggle(profile.id) }
+        .iconTap { model.profiles.toggle(profile.id) }
         .contextMenu {
             Button(active ? "Выключить" : "Включить") { model.profiles.toggle(profile.id) }
             Button("Изменить…") { model.profileDraft = profile }

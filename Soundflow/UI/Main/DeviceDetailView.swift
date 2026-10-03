@@ -40,7 +40,7 @@ struct DeviceDetailView: View {
     }
 
     private func appsOnDevice(device: AudioDevice?, name: String) -> some View {
-        let apps = device == nil ? model.apps.filter { model.rule($0.bundleID).outputs.contains(uid) } : model.apps(on: uid)
+        let apps = device == nil ? model.listedApps.filter { model.rule($0.bundleID).outputs.contains(uid) } : model.listedApps(on: uid)
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("Приложения на этом устройстве").font(.ui(14, .semibold)).foregroundStyle(Theme.text)
@@ -60,7 +60,7 @@ struct DeviceDetailView: View {
     }
 
     private func dropZone(name: String) -> some View {
-        let candidates = model.apps.filter { !model.currentOutputs($0.bundleID).contains(uid) }
+        let candidates = model.listedApps.filter { !model.currentOutputs($0.bundleID).contains(uid) }
         return VStack(spacing: 10) {
             Circle().fill(Theme.surface2).frame(width: 44, height: 44)
                 .overlay(Icon("arrow-down-to-line", size: 18, color: dropTargeted ? Theme.accent : Theme.text2))
@@ -375,7 +375,7 @@ struct MultiOutputDetailView: View {
 
     var body: some View {
         if let multi = model.config.multiOutputs.first(where: { $0.id == id }) {
-            let apps = model.apps(onMulti: multi)
+            let apps = model.listedApps(onMulti: multi)
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
                     HStack(spacing: 6) {

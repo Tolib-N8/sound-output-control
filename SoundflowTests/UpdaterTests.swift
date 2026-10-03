@@ -61,3 +61,29 @@ final class UpdaterTests: XCTestCase {
         XCTAssertEqual(state.rms.right, 0.25, accuracy: 0.0001)
     }
 }
+
+final class AppListingTests: XCTestCase {
+    private func app(_ id: String, playing: Bool = false) -> AudioApp {
+        AudioApp(bundleID: id, name: id, pid: 1, processObjects: [], isPlaying: playing, isUsingInput: false, isHidden: false)
+    }
+
+    func testIdleBackgroundAppsAreHiddenUntilTheyPlay() {
+        let prefs = Preferences()
+        XCTAssertFalse(AppListing.isListed(app("com.apple.Terminal"), prefs: prefs, rule: nil, hasPlayed: false, selected: false))
+        XCTAssertTrue(AppListing.isListed(app("com.apple.Terminal", playing: true), prefs: prefs, rule: nil, hasPlayed: false, selected: false))
+        XCTAssertTrue(AppListing.isListed(app("com.apple.Terminal"), prefs: prefs, rule: nil, hasPlayed: true, selected: false))
+        XCTAssertTrue(AppListing.isListed(app("x"), prefs: prefs, rule: AppRule(volume: 0.5), hasPlayed: false, selected: false))
+        XCTAssertFalse(AppListing.isListed(app("x"), prefs: prefs, rule: AppRule(), hasPlayed: false, selected: false),
+                       "a default rule (e.g. written by a profile) doesn't make an idle app listed")
+        var showIdle = Preferences()
+        showIdle.showIdleApps = true
+        XCTAssertTrue(AppListing.isListed(app("com.apple.Terminal"), prefs: showIdle, rule: nil, hasPlayed: false, selected: false))
+    }
+
+    func testUserHiddenAppsStayHidden() {
+        var prefs = Preferences()
+        prefs.hiddenApps = ["com.apple.Terminal"]
+        prefs.showIdleApps = true
+        XCTAssertFalse(AppListing.isListed(app("com.apple.Terminal", playing: true), prefs: prefs, rule: AppRule(volume: 0.3), hasPlayed: true, selected: true))
+    }
+}

@@ -171,6 +171,10 @@ struct Preferences: Codable, Equatable, Sendable {
     var lastUpdateCheck: Date?
     var hotkeys: [HotkeyAction: Hotkey] = Preferences.defaultHotkeys
     var deviceHotkeyTargets: [HotkeyAction: String] = [:]
+    /// Apps the user removed from the lists (their rules still apply).
+    var hiddenApps: [String] = []
+    /// Also list apps that have an audio client but haven't made a sound yet (e.g. Terminal).
+    var showIdleApps = false
 
     static let defaultHotkeys: [HotkeyAction: Hotkey] = [
         .openApp: Hotkey(key: .s, modifiers: [.option, .command]),
@@ -218,6 +222,8 @@ struct Preferences: Codable, Equatable, Sendable {
         lastUpdateCheck = try c.decodeIfPresent(Date.self, forKey: .lastUpdateCheck)
         hotkeys = try c.decode([HotkeyAction: Hotkey].self, forKey: .hotkeys, default: d.hotkeys)
         deviceHotkeyTargets = try c.decode([HotkeyAction: String].self, forKey: .deviceHotkeyTargets, default: [:])
+        hiddenApps = try c.decode([String].self, forKey: .hiddenApps, default: [])
+        showIdleApps = try c.decode(Bool.self, forKey: .showIdleApps, default: false)
     }
 }
 

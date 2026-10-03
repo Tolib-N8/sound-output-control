@@ -56,21 +56,31 @@ extension ButtonStyle where Self == SFPlainButtonStyle {
     static var sfPlain: SFPlainButtonStyle { SFPlainButtonStyle() }
 }
 
-/// For views activated with `onTapGesture`: plays the icons' animation on every tap.
-private struct IconTapTrigger: ViewModifier {
-    var animate: Bool
-    @State private var count = 0
+/// Tap handler for rows and cards: runs `action` and plays the animation of the icons inside.
+///
+/// It must be the view's own tap gesture — a separate inner tap gesture would win over an outer
+/// `onTapGesture` and swallow the click.
+private struct IconTap: ViewModifier {
+    let count: Int
+    let animate: Bool
+    let action: () -> Void
+    @State private var trigger = 0
 
     func body(content: Content) -> some View {
         content
-            .environment(\.iconTrigger, count)
+            .environment(\.iconTrigger, trigger)
             .environment(\.iconInPressable, true)
-            .simultaneousGesture(TapGesture().onEnded { if animate { count += 1 } })
+            .onTapGesture(count: count) {
+                if animate { trigger += 1 }
+                action()
+            }
     }
 }
 
 extension View {
-    func iconTapTrigger(animate: Bool = true) -> some View { modifier(IconTapTrigger(animate: animate)) }
+    func iconTap(count: Int = 1, animate: Bool = true, perform action: @escaping () -> Void) -> some View {
+        modifier(IconTap(count: count, animate: animate, action: action))
+    }
 }
 
 // MARK: - Icon

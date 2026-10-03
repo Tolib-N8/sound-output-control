@@ -270,8 +270,7 @@ struct OutputMapView: View {
             model.mode = .list
             model.selection = .app(app.bundleID)
         }
-        .onTapGesture { popoverApp = app.bundleID }
-        .iconTapTrigger()
+        .iconTap { popoverApp = app.bundleID }
         .popover(isPresented: Binding(get: { popoverApp == app.bundleID }, set: { if !$0 { popoverApp = nil } }), arrowEdge: .trailing) {
             SoundPopover(app: app, colors: Dictionary(uniqueKeysWithValues: makeLayout(width: mapWidth ?? 1000).outputs.map { ($0.ref, $0.color) })) {
                 popoverApp = nil
@@ -298,7 +297,7 @@ struct OutputMapView: View {
 
     private func deviceNodeView(_ item: OutputItem, layout: Layout) -> some View {
         let isTarget = drag?.target == item.ref
-        let count = item.multi.map { model.apps(onMulti: $0).count } ?? model.apps(on: item.ref).count
+        let count = item.multi.map { model.listedApps(onMulti: $0).count } ?? model.listedApps(on: item.ref).count
         let isDefault = item.ref == model.devices.defaultOutputUID
         let subtitle: String = {
             if let multi = item.multi { return multi.deviceUIDs.map { model.devices.device(uid: $0)?.shortName ?? model.name(of: $0) }.joined(separator: " + ") }
@@ -339,8 +338,7 @@ struct OutputMapView: View {
                                                                  lineWidth: isTarget ? 1.5 : 1))
         .shadow(color: isTarget ? item.color.opacity(0.25) : .clear, radius: 16)
         .contentShape(Rectangle())
-        .iconTapTrigger()
-        .onTapGesture(count: 2) {
+        .iconTap(count: 2) {
             if let multi = item.multi { model.selection = .multiOutput(multi.id) } else { model.selection = .device(item.ref) }
         }
     }

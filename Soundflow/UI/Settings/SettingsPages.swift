@@ -52,6 +52,37 @@ struct GeneralSettings: View {
                                subtitle: "Zoom, FaceTime, Discord — −\(Int(prefs.duckAmount * 100))%", isOn: model.pref(\.duckDuringCalls))
                 SettingsToggle(title: "Нормализация громкости", subtitle: "Выравнивать громкость разных приложений", isOn: model.pref(\.normalize))
             }
+            HiddenAppsGroup()
+        }
+    }
+}
+
+/// Which apps appear in the lists: idle background apps and apps hidden by the user.
+struct HiddenAppsGroup: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let hidden = model.config.prefs.hiddenApps
+        SettingsGroup(title: "СПИСОК ПРИЛОЖЕНИЙ",
+                      note: "Скрытые приложения не показываются в списке, на карте и в строке меню, но их настройки продолжают работать.") {
+            SettingsToggle(title: "Показывать тихие приложения", subtitle: "Например, Терминал или Почту — пока они не играют звук",
+                           first: true, isOn: model.pref(\.showIdleApps))
+            ForEach(hidden, id: \.self) { bundleID in
+                HStack(spacing: 12) {
+                    AppIconView(bundleID: bundleID, size: 24)
+                    Text(AppInfo.name(bundleID)).font(.ui(12, .medium)).foregroundStyle(Theme.text).lineLimit(1)
+                    Spacer(minLength: 0)
+                    Button("Вернуть") { model.unhideApp(bundleID) }.buttonStyle(.sfSecondary)
+                }
+                .padding(.vertical, 8).padding(.horizontal, 16)
+                .overlay(alignment: .top) { Divider1() }
+            }
+            if hidden.isEmpty {
+                Text("Скрыть приложение можно в меню «…» в его строке.").font(.ui(11)).foregroundStyle(Theme.text3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 12).padding(.horizontal, 16)
+                    .overlay(alignment: .top) { Divider1() }
+            }
         }
     }
 }
@@ -452,8 +483,7 @@ struct ProfileCard: View {
         .background(RoundedRectangle(cornerRadius: 12).fill(active ? Theme.accent.opacity(0.04) : Theme.surface))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(active ? Theme.accent.opacity(0.3) : Theme.border))
         .contentShape(Rectangle())
-        .iconTapTrigger(animate: false)
-        .onTapGesture(count: 2) { model.profileDraft = profile }
+        .iconTap(count: 2, animate: false) { model.profileDraft = profile }
     }
 
     private var summary: String {

@@ -57,6 +57,9 @@ final class ProcessMonitor {
 
     func app(_ bundleID: String) -> AudioApp? { apps.first { $0.bundleID == bundleID } }
 
+    /// Whether the app has produced sound at any point since Soundflow started.
+    func hasPlayed(_ bundleID: String) -> Bool { seenPlaying.contains(bundleID) }
+
     private func scheduleReload() {
         guard !scheduled else { return }
         scheduled = true

@@ -12,6 +12,17 @@ enum Selection: Hashable {
 
 enum AppFilter: String, CaseIterable { case all, playing, muted }
 
+enum AppListing {
+    /// Hidden by the user → never; otherwise idle background apps (e.g. Terminal) only when they
+    /// play, played this session, are configured, are selected, or idle apps are enabled.
+    static func isListed(_ app: AudioApp, prefs: Preferences, rule: AppRule?, hasPlayed: Bool, selected: Bool) -> Bool {
+        if prefs.hiddenApps.contains(app.bundleID) { return false }
+        if prefs.showIdleApps || app.isPlaying || hasPlayed || selected { return true }
+        if let rule, !rule.isDefault { return true }
+        return false
+    }
+}
+
 /// A choosable output in pickers: a hardware device, a multi-output or an offline remembered device.
 struct OutputOption: Identifiable, Hashable {
     var id: OutputRef { ref }
@@ -103,10 +114,38 @@ final class AppModel {
 
     // MARK: - Derived data
 
+    /// Every app with an audio client — used for routing and logic.
     var apps: [AudioApp] { processes.apps }
 
+    /// Temporarily reveals hidden and idle apps in the list ("+ N скрыто").
+    var showingHiddenApps = false
+
+    /// Whether an app appears in the lists: not hidden by the user, and either making sound,
+    /// having made sound this session, configured, or selected.
+    func isListed(_ app: AudioApp) -> Bool {
+        AppListing.isListed(app, prefs: config.prefs, rule: config.appRules[app.bundleID],
+                            hasPlayed: processes.hasPlayed(app.bundleID), selected: selection == .app(app.bundleID))
+    }
+
+    /// Apps shown in the UI.
+    var listedApps: [AudioApp] { showingHiddenApps ? apps : apps.filter(isListed) }
+    var hiddenAppCount: Int { apps.filter { !isListed($0) }.count }
+
+    func listedApps(on uid: String) -> [AudioApp] { listedApps.filter { currentOutputs($0.bundleID).contains(uid) } }
+    func listedApps(onMulti multi: MultiOutput) -> [AudioApp] { listedApps.filter { rule($0.bundleID).outputs.contains(multi.ref) } }
+
+    func hideApp(_ bundleID: String) {
+        guard !config.prefs.hiddenApps.contains(bundleID) else { return }
+        config.prefs.hiddenApps.append(bundleID)
+        if selection == .app(bundleID) { selection = nil }
+    }
+
+    func unhideApp(_ bundleID: String) {
+        config.prefs.hiddenApps.removeAll { $0 == bundleID }
+    }
+
     var visibleApps: [AudioApp] {
-        processes.apps.filter { app in
+        listedApps.filter { app in
             let matchesSearch = search.isEmpty || app.name.localizedCaseInsensitiveContains(search)
             let matchesFilter: Bool = switch filter {
             case .all: true

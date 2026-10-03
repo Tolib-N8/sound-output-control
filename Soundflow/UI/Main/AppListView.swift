@@ -10,7 +10,22 @@ struct AppListView: View {
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Приложения").font(.ui(24, .semibold)).tracking(-0.3).foregroundStyle(Theme.text)
-                    Text(subtitle).font(.ui(13)).foregroundStyle(Theme.text2)
+                    HStack(spacing: 10) {
+                        Text(subtitle).font(.ui(13)).foregroundStyle(Theme.text2)
+                        let hidden = model.hiddenAppCount
+                        if hidden > 0 || model.showingHiddenApps {
+                            Button {
+                                withAnimation(.smooth(duration: 0.25)) { model.showingHiddenApps.toggle() }
+                            } label: {
+                                Text(model.showingHiddenApps ? "Скрыть фоновые" : "+ \(hidden) скрыто")
+                                    .font(.ui(12, .medium)).foregroundStyle(Theme.text3)
+                                    .padding(.horizontal, 8).padding(.vertical, 2)
+                                    .background(Capsule().fill(Theme.surface2))
+                            }
+                            .buttonStyle(.sfPlain)
+                            .help("Тихие фоновые и скрытые вами приложения. Настроить — в Настройках → Основные.")
+                        }
+                    }
                 }
                 Spacer()
                 SegmentedControl(selection: $model.filter, items: [
@@ -49,8 +64,8 @@ struct AppListView: View {
     }
 
     private var subtitle: String {
-        let total = model.apps.count
-        let playing = model.apps.filter(\.isPlaying).count
+        let total = model.listedApps.count
+        let playing = model.listedApps.filter(\.isPlaying).count
         return countText(total, "приложение", "приложения", "приложений") + " · "
             + "\(playing) " + plural(playing, "воспроизводит", "воспроизводят", "воспроизводят") + " звук"
     }
@@ -127,6 +142,11 @@ struct AppRow: View {
                 Button(rule.muted ? "Включить звук" : "Выключить звук") { model.toggleMute(app.bundleID) }
                 Divider()
                 Button("Сбросить настройки") { model.resetRule(app.bundleID) }
+                if model.config.prefs.hiddenApps.contains(app.bundleID) {
+                    Button("Вернуть в список") { model.unhideApp(app.bundleID) }
+                } else {
+                    Button("Скрыть из списка") { withAnimation(.smooth(duration: 0.25)) { model.hideApp(app.bundleID) } }
+                }
             } label: {
                 Icon("ellipsis", size: 16, color: Theme.text3)
             }
@@ -142,8 +162,7 @@ struct AppRow: View {
         }
         .contentShape(Rectangle())
         .onHover { hover = $0 }
-        .iconTapTrigger(animate: false)
-        .onTapGesture {
+        .iconTap(animate: false) {
             withAnimation(.easeOut(duration: 0.2)) { model.selection = selected ? nil : .app(app.bundleID) }
         }
         .draggable(app.bundleID) {
@@ -221,7 +240,7 @@ struct DeviceLoadCard: View {
     let device: AudioDevice
 
     var body: some View {
-        let apps = model.apps(on: device.uid)
+        let apps = model.listedApps(on: device.uid)
         let active = !apps.isEmpty && apps.contains(where: \.isPlaying)
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
@@ -247,8 +266,7 @@ struct DeviceLoadCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .card(radius: 10, stroke: active ? Theme.accent.opacity(0.25) : Theme.border)
         .contentShape(Rectangle())
-        .iconTapTrigger()
-        .onTapGesture { model.selection = .device(device.uid) }
+        .iconTap { model.selection = .device(device.uid) }
         .dropDestination(for: String.self) { items, _ in
             for bundleID in items { model.assign(bundleID, to: device.uid, additive: NSEvent.modifierFlags.contains(.option)) }
             return true

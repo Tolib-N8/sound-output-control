@@ -127,8 +127,7 @@ struct ProfileEditor: View {
         .background(Capsule().fill(enabled ? Theme.accent.opacity(0.094) : Theme.surface))
         .overlay(Capsule().strokeBorder(enabled ? Theme.accent.opacity(0.33) : Theme.border))
         .contentShape(Capsule())
-        .iconTapTrigger()
-        .onTapGesture {
+        .iconTap {
             if enabled { draft.enabledTriggers.remove(index) } else { draft.enabledTriggers.insert(index) }
         }
         .contextMenu {
