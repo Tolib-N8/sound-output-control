@@ -44,6 +44,9 @@ struct OnboardingView: View {
         .background(WindowChrome(titlebarHeight: 44))
         .preferredColorScheme(.dark)
         .animation(.easeInOut(duration: 0.2), value: step)
+        .onAppear {
+            if model.config.prefs.onboardingDone && !model.onboardingRequested { dismissWindow(id: WindowID.onboarding) }
+        }
     }
 
     // MARK: - Left visual

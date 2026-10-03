@@ -82,6 +82,7 @@ private struct WindowOpeners: ViewModifier {
                 openWindow(id: WindowID.settings)
             }
             model.openOnboarding = {
+                model.onboardingRequested = true
                 NSApp.activate(ignoringOtherApps: true)
                 openWindow(id: WindowID.onboarding)
             }

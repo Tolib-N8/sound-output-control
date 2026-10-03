@@ -64,6 +64,8 @@ final class AppModel {
     @ObservationIgnored var openOnboarding: (() -> Void)?
     @ObservationIgnored var didHandleLaunch = false
     @ObservationIgnored var launchAnimationPlayed = false
+    /// Set when onboarding is opened on purpose; a window restored by macOS after completion closes itself.
+    @ObservationIgnored var onboardingRequested = false
 
     var config: Config {
         get { store.config }
