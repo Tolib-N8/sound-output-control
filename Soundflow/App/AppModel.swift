@@ -63,6 +63,7 @@ final class AppModel {
     @ObservationIgnored var openSettings: (() -> Void)?
     @ObservationIgnored var openOnboarding: (() -> Void)?
     @ObservationIgnored var didHandleLaunch = false
+    @ObservationIgnored var launchAnimationPlayed = false
 
     var config: Config {
         get { store.config }
@@ -470,6 +471,16 @@ final class AppModel {
                 settingsTab = parts.count > 1 ? SettingsTab(rawValue: parts[1]) ?? .general : .general
                 openSettings?()
             case "onboarding": openOnboarding?()
+            case "tour":
+                // Walks through the scenes to preview transitions: list → map → device → list.
+                let steps: [(Double, @MainActor () -> Void)] = [
+                    (2.0, { self.mode = .map }),
+                    (4.0, { self.selection = self.visibleDevices.first.map { .device($0.uid) } }),
+                    (6.0, { self.selection = nil; self.mode = .list }),
+                ]
+                for (delay, step) in steps {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) { MainActor.assumeIsolated { step() } }
+                }
             case "toast":
                 toast = ToastMessage(icon: "bluetooth-off", title: "AirPods Pro отключены",
                                      message: "Spotify и Discord переведены на MacBook Pro. Вернём их, когда AirPods подключатся.",

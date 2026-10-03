@@ -4,13 +4,20 @@ import SwiftUI
 struct MainWindowView: View {
     @Environment(AppModel.self) private var model
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var launchStage: LaunchStage = .intro
+    @State private var brandFrame: CGRect = .zero
+
     var body: some View {
+        let revealed = launchStage != .intro
         VStack(spacing: 0) {
-            Titlebar()
+            Titlebar(brandVisible: launchStage == .done)
             HStack(spacing: 0) {
                 Sidebar()
                 content
             }
+            .opacity(revealed ? 1 : 0)
+            .offset(y: revealed ? 0 : 6)
         }
         .background(Theme.bg)
         .overlay(alignment: .bottom) {
@@ -22,10 +29,22 @@ struct MainWindowView: View {
             }
         }
         .animation(.spring(duration: 0.3), value: model.toast)
+        .overlay {
+            if launchStage != .done {
+                LaunchOverlay(stage: $launchStage, target: brandFrame)
+            }
+        }
+        .onPreferenceChange(BrandFrameKey.self) { brandFrame = $0 }
+        .coordinateSpace(name: "window")
         .ignoresSafeArea()
         .background(WindowChrome(titlebarHeight: 52))
         .preferredColorScheme(.dark)
         .frame(minWidth: 1120, minHeight: 680)
+        .onAppear {
+            // Plays once per app launch, not every time the window is reopened.
+            if model.launchAnimationPlayed || reduceMotion { launchStage = .done }
+            model.launchAnimationPlayed = true
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -42,7 +61,21 @@ struct MainWindowView: View {
         #endif
     }
 
-    @ViewBuilder private var mainContent: some View {
+    /// Identity and depth of the current scene, used for the transition between scenes.
+    private var scene: (id: String, rank: Int) {
+        switch model.selection {
+        case .device(let uid): ("device:\(uid)", 2)
+        case .multiOutput(let id): ("multi:\(id)", 2)
+        default: model.mode == .list ? ("list", 0) : ("map", 1)
+        }
+    }
+
+    private var mainContent: some View {
+        let scene = scene
+        return SceneContainer(id: scene.id, rank: scene.rank) { sceneContent }
+    }
+
+    @ViewBuilder private var sceneContent: some View {
         switch model.selection {
         case .device(let uid):
             DeviceDetailView(uid: uid)
@@ -70,16 +103,18 @@ struct MainWindowView: View {
 
 struct Titlebar: View {
     @Environment(AppModel.self) private var model
+    var brandVisible = true
 
     var body: some View {
         @Bindable var model = model
         HStack {
             HStack(spacing: 20) {
                 Color.clear.frame(width: 52, height: 12) // traffic lights
-                HStack(spacing: 8) {
-                    Icon("audio-waveform", size: 18, color: Theme.accent)
-                    Text("Soundflow").font(.ui(14, .semibold)).foregroundStyle(Theme.text)
-                }
+                BrandView()
+                    .opacity(brandVisible ? 1 : 0)
+                    .background(GeometryReader { proxy in
+                        Color.clear.preference(key: BrandFrameKey.self, value: proxy.frame(in: .named("window")))
+                    })
                 SegmentedControl(selection: $model.mode, items: [
                     .init(value: .list, title: "Список", icon: "list"),
                     .init(value: .map, title: "Карта", icon: "workflow"),

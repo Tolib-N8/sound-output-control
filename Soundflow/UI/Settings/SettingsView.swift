@@ -61,20 +61,21 @@ struct SettingsView: View {
                 .background(Theme.surface)
                 .hairline(.trailing)
 
-                ScrollView(.vertical, showsIndicators: false) {
-                    Group {
-                        switch tab {
-                        case .general: GeneralSettings()
-                        case .devices: DeviceSettingsPage()
-                        case .hotkeys: HotkeySettings()
-                        case .profiles: ProfileSettings()
-                        case .driver: DriverSettings()
-                        case .about: AboutSettings()
+                SceneContainer(id: tab, rank: SettingsTab.allCases.firstIndex(of: tab) ?? 0) {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        Group {
+                            switch tab {
+                            case .general: GeneralSettings()
+                            case .devices: DeviceSettingsPage()
+                            case .hotkeys: HotkeySettings()
+                            case .profiles: ProfileSettings()
+                            case .driver: DriverSettings()
+                            case .about: AboutSettings()
+                            }
                         }
+                        .padding(28)
                     }
-                    .padding(28)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(width: 960)

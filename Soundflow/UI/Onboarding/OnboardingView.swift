@@ -13,7 +13,7 @@ struct OnboardingView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            visual
+            SceneContainer(id: min(step, 2), rank: step) { visual }
                 .frame(width: 280)
                 .frame(maxHeight: .infinity)
                 .background(
@@ -22,10 +22,15 @@ struct OnboardingView: View {
                 .hairline(.trailing)
             VStack(alignment: .leading, spacing: 18) {
                 steps
-                switch step {
-                case 0: welcome
-                case 1: permission
-                default: finish
+                SceneContainer(id: step, rank: step) {
+                    Group {
+                        switch step {
+                        case 0: welcome
+                        case 1: permission
+                        default: finish
+                        }
+                    }
+                    .frame(maxHeight: .infinity, alignment: .top)
                 }
             }
             .padding(EdgeInsets(top: 40, leading: 36, bottom: 28, trailing: 36))

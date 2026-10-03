@@ -19,4 +19,4 @@ xcodebuild -scheme Soundflow test
 - Нужно разрешение «Запись системного звука». Отладочная сборка подписана ad-hoc, поэтому после каждой пересборки macOS может спросить его заново.
 - Настройки хранятся в `~/Library/Application Support/Soundflow/config.json`.
 - Иконки — lucide, отрисовываются по частям (`Icon`), и у каждой своя анимация на нажатие (`IconMotions.swift`). Контуры генерируются скриптом `scripts/gen_lucide_glyphs.py <lucide-static>/icons` из иконок в `Assets.xcassets/Icons`.
-- В DEBUG-сборке аргумент `-SFScreen map|app|device|multi|profile|menubar|toast|icons|settings:<tab>|onboarding:<step>` сразу открывает нужный экран; `icons` — галерея всех иконок с раскадровкой анимаций.
+- В DEBUG-сборке аргумент `-SFScreen map|app|device|multi|profile|menubar|toast|icons|tour|settings:<tab>|onboarding:<step>` сразу открывает нужный экран; `icons` — галерея всех иконок с раскадровкой анимаций.
