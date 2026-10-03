@@ -7,7 +7,7 @@ import Foundation
 /// allocation-free on Apple Silicon and Intel; a torn update is impossible for single words.
 final class RenderState: @unchecked Sendable {
     private enum Slot: Int, CaseIterable {
-        case targetGain, balance, normalize, currentGain, agcGain, envelope, peakL, peakR
+        case targetGain, balance, normalize, currentGain, agcGain, envelope, peakL, peakR, rmsL, rmsR
         case cycles, renderNanos, overloads, inputOffset, budgetNanos
     }
 
@@ -39,6 +39,8 @@ final class RenderState: @unchecked Sendable {
 
     // Render thread → main thread
     var peak: (left: Float, right: Float) { (self[.peakL], self[.peakR]) }
+    /// Loudness (RMS) per channel since the last decay — steadier than peaks for meters.
+    var rms: (left: Float, right: Float) { (self[.rmsL], self[.rmsR]) }
     var cycles: Float { self[.cycles] }
     var overloads: Float { self[.overloads] }
 
@@ -54,6 +56,14 @@ final class RenderState: @unchecked Sendable {
     func decayPeaks() {
         self[.peakL] *= 0.6
         self[.peakR] *= 0.6
+        self[.rmsL] *= 0.7
+        self[.rmsR] *= 0.7
+    }
+
+    private func recordRMS(_ sumL: Float, _ sumR: Float, frames: Int) {
+        guard frames > 0 else { return }
+        self[.rmsL] = max(self[.rmsL], (sumL / Float(frames)).squareRoot())
+        self[.rmsR] = max(self[.rmsR], (sumR / Float(frames)).squareRoot())
     }
 
     // MARK: - Rendering
@@ -104,6 +114,7 @@ final class RenderState: @unchecked Sendable {
         let rightPan: Float = balance < 0 ? 1 + balance : 1
 
         var peakL: Float = 0, peakR: Float = 0
+        var sumL: Float = 0, sumR: Float = 0, measured = 0
         for (bufferIndex, buffer) in outputs.enumerated() {
             guard let data = buffer.mData else { continue }
             let channels = max(1, Int(buffer.mNumberChannels))
@@ -126,6 +137,9 @@ final class RenderState: @unchecked Sendable {
                 if bufferIndex == 0 {
                     peakL = max(peakL, abs(l))
                     peakR = max(peakR, abs(r))
+                    sumL += l * l
+                    sumR += r * r
+                    measured += 1
                 }
             }
             if count < outFrames {
@@ -135,6 +149,33 @@ final class RenderState: @unchecked Sendable {
         self[.currentGain] = target
         self[.peakL] = max(self[.peakL], peakL)
         self[.peakR] = max(self[.peakR], peakR)
+        recordRMS(sumL, sumR, frames: measured)
+    }
+
+    /// Measures the tap's peak level without producing sound (the app keeps playing natively).
+    func meter(input: UnsafePointer<AudioBufferList>, output: UnsafeMutablePointer<AudioBufferList>) {
+        let start = mach_absolute_time()
+        defer { recordTiming(since: start) }
+        let outputs = UnsafeMutableAudioBufferListPointer(output)
+        silence(outputs)
+
+        let inputs = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
+        let offset = min(inputOffset, inputs.count)
+        guard offset < inputs.count, let first = inputs[offset].mData else { return }
+        let channels = max(1, Int(inputs[offset].mNumberChannels))
+        let frames = Int(inputs[offset].mDataByteSize) / (MemoryLayout<Float>.size * channels)
+        let samples = first.assumingMemoryBound(to: Float.self)
+        var peakL: Float = 0, peakR: Float = 0, sumL: Float = 0, sumR: Float = 0
+        for frame in 0..<frames {
+            let l = samples[frame * channels], r = samples[frame * channels + (channels > 1 ? 1 : 0)]
+            peakL = max(peakL, abs(l))
+            peakR = max(peakR, abs(r))
+            sumL += l * l
+            sumR += r * r
+        }
+        self[.peakL] = max(self[.peakL], peakL)
+        self[.peakR] = max(self[.peakR], peakR)
+        recordRMS(sumL, sumR, frames: frames)
     }
 
     /// Slow automatic gain control towards a common loudness target.

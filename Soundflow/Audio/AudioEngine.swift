@@ -66,8 +66,14 @@ final class AudioEngine {
 
     struct AppStatus: Equatable {
         var route: ResolvedRoute
+        /// Captured and processed (volume, routing…).
         var tapped: Bool
+        /// Captured only to measure its level; it keeps playing natively.
+        var metered = false
         var error: String?
+
+        /// A live level is available for this app.
+        var hasLevel: Bool { tapped || metered }
     }
 
     struct Stats: Equatable {
@@ -93,12 +99,18 @@ final class AudioEngine {
     private(set) var stats = Stats()
     private(set) var permission: AudioCapturePermission = PermissionService.audioCapture
     var enabled = true
+    /// Meter every playing app (not only routed ones) while a window shows level indicators.
+    var meteringEnabled = false {
+        didSet { if oldValue != meteringEnabled, let lastInput { reconcile(lastInput) } }
+    }
+    /// Keeps metering briefly after an app goes quiet so short pauses don't churn taps.
+    @ObservationIgnored private var lastHeard: [String: Date] = [:]
 
     @ObservationIgnored private let host = RouterHost()
     @ObservationIgnored private var states: [String: RenderState] = [:]
     @ObservationIgnored private var lastConfigs: [String: RouteConfig] = [:]
     @ObservationIgnored private var lastInput: Input?
-    @ObservationIgnored private(set) var levels: [String: Float] = [:]
+    @ObservationIgnored private(set) var levels: [String: (left: Float, right: Float)] = [:]
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var timers: [Timer] = []
     @ObservationIgnored private var latencies: [String: Double] = [:]
@@ -113,7 +125,8 @@ final class AudioEngine {
         })
     }
 
-    func level(_ bundleID: String) -> Float { levels[bundleID] ?? 0 }
+    func level(_ bundleID: String) -> Float { levels[bundleID].map { max($0.left, $0.right) } ?? 0 }
+    func stereoLevel(_ bundleID: String) -> (left: Float, right: Float) { levels[bundleID] ?? (0, 0) }
 
     @ObservationIgnored private var permissionCheckTick = 0
 
@@ -159,7 +172,16 @@ final class AudioEngine {
             state.balance = Float(rule.balance)
             state.normalize = prefs.normalize
 
-            newStatuses[app.bundleID] = AppStatus(route: route, tapped: tap, error: statuses[app.bundleID]?.error)
+            if app.isPlaying { lastHeard[app.bundleID] = Date() }
+            let recentlyHeard = lastHeard[app.bundleID].map { Date().timeIntervalSince($0) < 10 } ?? false
+            let meter = !tap && canTap && meteringEnabled && recentlyHeard && !route.outputs.isEmpty
+
+            newStatuses[app.bundleID] = AppStatus(route: route, tapped: tap, metered: meter, error: statuses[app.bundleID]?.error)
+            if meter {
+                desired[app.bundleID] = (RouteConfig(bundleID: app.bundleID, processObjects: app.processObjects,
+                                                     outputUIDs: [route.outputs[0]], bufferFrames: 1024, monitorOnly: true), state)
+                continue
+            }
             guard tap else { continue }
             let clockRate = rates[route.outputs[0]] ?? 48000
             let extra = route.extraLatencyMs.mapValues { UInt32(($0 / 1000 * clockRate).rounded()) }
@@ -240,14 +262,13 @@ final class AudioEngine {
 
     private func sampleLevels() {
         for (bundleID, state) in states {
-            let peak = state.peak
-            levels[bundleID] = max(peak.left, peak.right)
+            levels[bundleID] = state.rms
             state.decayPeaks()
         }
     }
 
     private func sampleStats() {
-        let active = statuses.filter(\.value.tapped)
+        let active = statuses.filter(\.value.hasLevel)
         let load = active.keys.compactMap { states[$0]?.takeLoad() }.reduce(0, +)
         let latency = latencies.values.max() ?? (lastInput?.devices.first { $0.uid == lastInput?.defaultUID }?.latencyMs ?? 0)
         let fresh = Stats(latencyMs: latency, cpuPercent: load * 100, streams: active.count, failures: stats.failures, startedAt: stats.startedAt)
@@ -255,5 +276,11 @@ final class AudioEngine {
             stats = fresh
         }
         refreshPermission()
+        // Stop metering apps that have been quiet for a while.
+        if let input = lastInput, statuses.contains(where: { bundleID, status in
+            status.metered && (lastHeard[bundleID].map { Date().timeIntervalSince($0) >= 10 } ?? true)
+        }) {
+            reconcile(input)
+        }
     }
 }

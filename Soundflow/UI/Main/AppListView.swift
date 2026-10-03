@@ -167,7 +167,7 @@ struct AppStatusLine: View {
             switch tone {
             case .playing:
                 LiveLevel(level: { model.engine.level(app.bundleID) }) { level in
-                    MiniBars(level: model.status(app.bundleID)?.tapped == true ? meterFraction(level) : 0.6)
+                    MiniBars(level: model.status(app.bundleID)?.hasLevel == true ? meterFraction(level) : 0.6)
                 }
             case .muted:
                 Icon("bell-off", size: 11, color: Theme.text3)
@@ -238,7 +238,7 @@ struct DeviceLoadCard: View {
                 .frame(height: 24)
                 Spacer()
                 LiveLevel(level: { apps.map { model.engine.level($0.bundleID) }.max() ?? 0 }) { level in
-                    let tapped = apps.contains { model.status($0.bundleID)?.tapped == true }
+                    let tapped = apps.contains { model.status($0.bundleID)?.hasLevel == true }
                     StairBars(level: tapped ? meterFraction(level) : (active ? 0.7 : 0))
                 }
             }

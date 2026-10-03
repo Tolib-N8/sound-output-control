@@ -12,11 +12,11 @@ struct LiveLevel<Content: View>: View {
     }
 }
 
-/// Converts a linear peak to a 0…1 display value (‑48 dB … 0 dB).
-func meterFraction(_ peak: Float) -> Double {
-    guard peak > 0.0001 else { return 0 }
-    let db = 20 * log10(Double(peak))
-    return ((db + 48) / 48).clamped(to: 0...1)
+/// Converts a linear RMS level to a 0…1 display value (‑50 dBFS … ‑3 dBFS, the loud end of music).
+func meterFraction(_ level: Float) -> Double {
+    guard level > 0.0001 else { return 0 }
+    let db = 20 * log10(Double(level))
+    return ((db + 50) / 47).clamped(to: 0...1)
 }
 
 /// Five tiny bars next to an app's status (playing indicator).

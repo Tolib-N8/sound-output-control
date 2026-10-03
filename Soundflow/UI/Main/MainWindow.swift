@@ -37,7 +37,7 @@ struct MainWindowView: View {
         .onPreferenceChange(BrandFrameKey.self) { brandFrame = $0 }
         .coordinateSpace(name: "window")
         .ignoresSafeArea()
-        .background(WindowChrome(titlebarHeight: 52))
+        .background(WindowChrome(titlebarHeight: 52) { visible in model.engine.meteringEnabled = visible })
         .preferredColorScheme(.dark)
         .frame(minWidth: 1120, minHeight: 680)
         .onAppear {
@@ -175,20 +175,25 @@ struct MasterVolume: View {
 /// Configures the hosting NSWindow: transparent titlebar, and traffic lights centered in our custom bar.
 struct WindowChrome: NSViewRepresentable {
     var titlebarHeight: CGFloat
+    /// Reports whether the window is actually on screen (not closed, minimized or fully covered).
+    var onVisibilityChange: ((Bool) -> Void)?
 
     func makeNSView(context: Context) -> ChromeView {
         let view = ChromeView()
         view.titlebarHeight = titlebarHeight
+        view.onVisibilityChange = onVisibilityChange
         return view
     }
 
     func updateNSView(_ view: ChromeView, context: Context) {
         view.titlebarHeight = titlebarHeight
+        view.onVisibilityChange = onVisibilityChange
         view.layoutButtons()
     }
 
     final class ChromeView: NSView {
         var titlebarHeight: CGFloat = 52
+        var onVisibilityChange: ((Bool) -> Void)?
         private var observers: [NSObjectProtocol] = []
 
         override func viewDidMoveToWindow() {
@@ -207,7 +212,22 @@ struct WindowChrome: NSViewRepresentable {
                     MainActor.assumeIsolated { self?.layoutButtons() }
                 })
             }
-            DispatchQueue.main.async { self.layoutButtons() }
+            for name in [NSWindow.didChangeOcclusionStateNotification, NSWindow.didMiniaturizeNotification,
+                         NSWindow.didDeminiaturizeNotification, NSWindow.willCloseNotification] {
+                let closing = name == NSWindow.willCloseNotification
+                observers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.reportVisibility(closing: closing) }
+                })
+            }
+            DispatchQueue.main.async {
+                self.layoutButtons()
+                self.reportVisibility(closing: false)
+            }
+        }
+
+        private func reportVisibility(closing: Bool) {
+            guard let window else { return }
+            onVisibilityChange?(!closing && window.isVisible && !window.isMiniaturized && window.occlusionState.contains(.visible))
         }
 
         func layoutButtons() {

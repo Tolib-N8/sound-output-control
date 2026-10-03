@@ -444,7 +444,7 @@ struct SoundPopover: View {
                 }
                 SFSlider(value: volume, showsFill: !rule.muted)
                 LiveLevel(level: { model.engine.level(app.bundleID) }) { level in
-                    SegmentStrip(level: model.status(app.bundleID)?.tapped == true ? meterFraction(level) : 0)
+                    SegmentStrip(level: model.status(app.bundleID)?.hasLevel == true ? meterFraction(level) : 0)
                 }
             }
             VStack(alignment: .leading, spacing: 8) {

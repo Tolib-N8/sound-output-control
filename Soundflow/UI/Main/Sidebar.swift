@@ -38,6 +38,7 @@ struct Sidebar: View {
             }
 
             Spacer(minLength: 0)
+            UpdatePill()
             EngineStatusCard()
         }
         .padding(.vertical, 20)
@@ -197,6 +198,38 @@ struct SidebarProfileRow: View {
         .contextMenu {
             Button(active ? "Выключить" : "Включить") { model.profiles.toggle(profile.id) }
             Button("Изменить…") { model.profileDraft = profile }
+        }
+    }
+}
+
+/// Shown above the engine status when an update is available or ready.
+struct UpdatePill: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        if let update = model.updater.availableUpdate {
+            let ready: Bool = if case .ready = model.updater.state { true } else { false }
+            Button {
+                if ready { model.updater.installAndRelaunch() } else {
+                    model.settingsTab = .about
+                    model.openSettings?()
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Icon(ready ? "rotate-ccw" : "arrow-down-to-line", size: 14, color: Theme.accentInk)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(ready ? "Перезапустить для обновления" : "Доступно обновление").font(.ui(12, .semibold))
+                        Text("Soundflow \(update.version)").font(.mono(10))
+                    }
+                    .foregroundStyle(Theme.accentInk)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 12).padding(.vertical, 9)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.accent))
+            }
+            .buttonStyle(.sfPlain)
+            .padding(.bottom, -14)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }
 }

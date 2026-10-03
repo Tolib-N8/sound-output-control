@@ -32,5 +32,7 @@ hdiutil verify "$DMG" >/dev/null
 MNT=$(hdiutil attach -nobrowse -readonly "$DMG" 2>/dev/null | tail -1 | cut -f3-)
 codesign --verify --deep --strict "$MNT/Soundflow.app"
 hdiutil detach "$MNT" -quiet
-shasum -a 256 "$DMG"
-echo "✓ $DMG"
+# The in-app updater verifies downloads against this file (upload it next to the DMG).
+(cd dist && shasum -a 256 "$(basename "$DMG")" > "$(basename "$DMG").sha256")
+cat "$DMG.sha256"
+echo "✓ $DMG (+ .sha256)"

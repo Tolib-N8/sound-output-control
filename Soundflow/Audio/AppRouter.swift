@@ -15,11 +15,13 @@ struct RouteConfig: Equatable, Sendable {
     var bufferFrames: UInt32 = 256
     /// Drift-compensation resampler quality, 0 (min) … 4 (max).
     var resamplingQuality = 2
+    /// Only measure the level: the app keeps playing natively and the router outputs silence.
+    var monitorOnly = false
 
     func requiresRebuild(from other: RouteConfig) -> Bool {
         outputUIDs != other.outputUIDs || driftCompensation != other.driftCompensation
             || extraLatency != other.extraLatency || bufferFrames != other.bufferFrames
-            || resamplingQuality != other.resamplingQuality
+            || resamplingQuality != other.resamplingQuality || monitorOnly != other.monitorOnly
     }
 }
 
@@ -27,6 +29,7 @@ let audioLog = Logger(subsystem: "com.tolibnosirov.Soundflow", category: "audio"
 
 /// Captures one app with a Core Audio process tap (muting its original output) and plays the
 /// processed signal through a private aggregate device made of the chosen output devices.
+/// In `monitorOnly` mode the original output is left alone and the router only meters the signal.
 final class AppRouter: @unchecked Sendable {
     let state: RenderState
     private(set) var config: RouteConfig
@@ -72,14 +75,14 @@ final class AppRouter: @unchecked Sendable {
     private func start() throws {
         guard let mainUID = config.outputUIDs.first else { throw CoreAudioError(status: -1, context: "no output") }
 
-        // 1. Tap the app's processes and mute their original output.
+        // 1. Tap the app's processes (muting their original output unless we only meter).
         let processes = Self.alive(config.processObjects)
         guard !processes.isEmpty else { throw CoreAudioError(status: -1, context: "no live processes") }
         let description = CATapDescription(stereoMixdownOfProcesses: processes)
         description.uuid = UUID()
         description.name = "Soundflow \(config.bundleID)"
         description.isPrivate = true
-        description.muteBehavior = .mutedWhenTapped
+        description.muteBehavior = config.monitorOnly ? .unmuted : .mutedWhenTapped
         try check(AudioHardwareCreateProcessTap(description, &tapID), "create tap")
         tapDescription = description
         let tapUID = try CA.string(tapID, .init(kAudioTapPropertyUID))
@@ -127,12 +130,17 @@ final class AppRouter: @unchecked Sendable {
 
         // 4. Render.
         let state = self.state
+        let monitorOnly = config.monitorOnly
         try check(AudioDeviceCreateIOProcIDWithBlock(&procID, aggregateID, ioQueue) { _, input, _, output, _ in
-            state.render(input: input, output: output)
+            if monitorOnly {
+                state.meter(input: input, output: output)
+            } else {
+                state.render(input: input, output: output)
+            }
         }, "create IOProc")
         if deviceInputStreams > 0 { disableInputStreams(count: deviceInputStreams) }
         try check(AudioDeviceStart(aggregateID, procID), "start")
-        audioLog.info("Routing \(self.config.bundleID, privacy: .public) → \(self.config.outputUIDs, privacy: .public)")
+        audioLog.info("\(self.config.monitorOnly ? "Metering" : "Routing") \(self.config.bundleID, privacy: .public) → \(self.config.outputUIDs, privacy: .public)")
     }
 
     func stop() {

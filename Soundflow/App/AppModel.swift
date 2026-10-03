@@ -41,6 +41,7 @@ final class AppModel {
     let processes: ProcessMonitor
     let engine: AudioEngine
     let battery: BluetoothInfo
+    let updater = Updater()
     @ObservationIgnored lazy var profiles = ProfileManager(model: self)
     @ObservationIgnored lazy var hotkeys = HotkeyManager(model: self)
 
@@ -96,6 +97,7 @@ final class AppModel {
         profiles.start()
         hotkeys.registerAll()
         battery.start(model: self)
+        updater.start(model: self)
         applyDockIcon()
     }
 
@@ -473,6 +475,24 @@ final class AppModel {
                 settingsTab = parts.count > 1 ? SettingsTab(rawValue: parts[1]) ?? .general : .general
                 openSettings?()
             case "onboarding": openOnboarding?()
+            case "update":
+                // End-to-end updater check: run with -SFFakeVersion 0.9.0 -SFUpdateInstallPath <path>.
+                settingsTab = .about
+                openSettings?()
+                updater.check(userInitiated: true)
+                Task { @MainActor in
+                    for _ in 0..<240 {
+                        try? await Task.sleep(for: .milliseconds(500))
+                        switch updater.state {
+                        case .available(let update): updater.download(update)
+                        case .ready:
+                            if UserDefaults.standard.bool(forKey: "SFUpdateRelaunch") { updater.installAndRelaunch(); return }
+                            audioLog.info("Update test installed at \(self.updater.debugInstall()?.path ?? "nil", privacy: .public)"); return
+                        case .failed(let message): audioLog.error("Update test failed: \(message, privacy: .public)"); return
+                        default: break
+                        }
+                    }
+                }
             case "tour":
                 // Walks through the scenes to preview transitions: list → map → device → list.
                 let steps: [(Double, @MainActor () -> Void)] = [

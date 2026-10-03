@@ -145,16 +145,15 @@ struct AppVolumeSection: View {
             }
             SFSlider(value: volume, showsFill: !rule.muted)
             LiveLevel(level: { model.engine.level(app.bundleID) }) { _ in
-                let tapped = model.status(app.bundleID)?.tapped == true
-                let fraction = tapped ? meterFraction(model.engine.level(app.bundleID)) : 0
-                let balance = rule.balance
+                let live = model.status(app.bundleID)?.hasLevel == true
+                let stereo = model.engine.stereoLevel(app.bundleID)
                 VStack(spacing: 5) {
-                    SegmentMeter(label: "L", level: fraction * (balance > 0 ? 1 - balance : 1))
-                    SegmentMeter(label: "R", level: fraction * (balance < 0 ? 1 + balance : 1))
+                    SegmentMeter(label: "L", level: live ? meterFraction(stereo.left) : 0)
+                    SegmentMeter(label: "R", level: live ? meterFraction(stereo.right) : 0)
                 }
             }
-            if model.status(app.bundleID)?.tapped != true, app.isPlaying {
-                Text("Приложение звучит напрямую — индикатор появится после изменения громкости или выхода.")
+            if model.engine.permission == .denied, app.isPlaying {
+                Text("Разрешите «Запись системного звука» в настройках Soundflow, чтобы видеть уровень.")
                     .font(.ui(10)).foregroundStyle(Theme.text3).fixedSize(horizontal: false, vertical: true)
             }
         }

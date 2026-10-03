@@ -638,14 +638,10 @@ struct AboutSettings: View {
             }
             .padding(.top, 8)
 
-            SettingsGroup(title: "ОБНОВЛЕНИЯ",
-                          note: "Канал обновлений пока не настроен — новые версии устанавливаются вручную.") {
-                SettingsRow(title: "Последняя проверка",
-                            subtitle: model.config.prefs.lastUpdateCheck.map { $0.formatted(.relative(presentation: .named)) } ?? "Не выполнялась",
-                            first: true) {
-                    Button("Проверить") { model.config.prefs.lastUpdateCheck = Date() }.buttonStyle(.sfSecondary)
-                }
-                SettingsToggle(title: "Обновлять автоматически", isOn: model.pref(\.autoUpdate))
+            SettingsGroup(title: "ОБНОВЛЕНИЯ", note: "Обновления приходят из релизов на GitHub и проверяются по контрольной сумме и подписи.") {
+                UpdateStatusRow()
+                SettingsToggle(title: "Обновлять автоматически", subtitle: "Скачивать в фоне и ставить при перезапуске",
+                               isOn: model.pref(\.autoUpdate))
                 SettingsToggle(title: "Бета-версии", subtitle: "Получать обновления раньше всех", isOn: model.pref(\.betaUpdates))
             }
             .frame(maxWidth: 480)
@@ -658,6 +654,99 @@ struct AboutSettings: View {
         }
         .frame(maxWidth: .infinity)
         .sheet(isPresented: $showLicenses) { LicensesView() }
+    }
+}
+
+/// Update state with the matching action (check / download / restart).
+struct UpdateStatusRow: View {
+    @Environment(AppModel.self) private var model
+    @State private var showNotes = false
+
+    var body: some View {
+        let updater = model.updater
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title(updater.state)).font(.ui(12, .medium)).foregroundStyle(Theme.text)
+                    Text(subtitle(updater.state)).font(.ui(11)).foregroundStyle(isError(updater.state) ? Theme.danger : Theme.text3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                action(updater.state)
+            }
+            if case let .downloading(_, progress) = updater.state {
+                ProgressView(value: progress).progressViewStyle(.linear).tint(Theme.accent)
+            }
+            if let update = updater.availableUpdate, !update.notes.isEmpty {
+                Button { withAnimation(.smooth(duration: 0.25)) { showNotes.toggle() } } label: {
+                    HStack(spacing: 6) {
+                        Icon(showNotes ? "chevron-down" : "chevron-right", size: 12, color: Theme.text3)
+                        Text("Что нового в \(update.version)").font(.ui(11, .medium)).foregroundStyle(Theme.text2)
+                    }
+                }
+                .buttonStyle(.sfPlain)
+                if showNotes {
+                    ScrollView {
+                        Text(notes(update.notes)).font(.ui(11)).foregroundStyle(Theme.text2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                    }
+                    .frame(maxHeight: 160)
+                }
+            }
+        }
+        .padding(.vertical, 12).padding(.horizontal, 16)
+    }
+
+    private func title(_ state: Updater.State) -> String {
+        switch state {
+        case .idle: "Версия \(Bundle.main.shortVersion)"
+        case .checking: "Проверка обновлений…"
+        case .upToDate: "У вас последняя версия"
+        case .available(let update): "Доступна версия \(update.version)" + (update.isPrerelease ? " (бета)" : "")
+        case .downloading(let update, let progress): "Загрузка \(update.version) — \(Int(progress * 100))%"
+        case .ready(let update): "Версия \(update.version) готова к установке"
+        case .installing: "Установка…"
+        case .failed: "Не удалось обновить"
+        }
+    }
+
+    private func subtitle(_ state: Updater.State) -> String {
+        switch state {
+        case .failed(let message): return message
+        case .available(let update): return ByteCountFormatter.string(fromByteCount: Int64(update.size), countStyle: .file)
+        case .ready: return "Soundflow перезапустится — это займёт пару секунд"
+        default:
+            return model.config.prefs.lastUpdateCheck.map { "Проверено " + $0.formatted(.relative(presentation: .named)) } ?? "Ещё не проверялось"
+        }
+    }
+
+    private func isError(_ state: Updater.State) -> Bool {
+        if case .failed = state { true } else { false }
+    }
+
+    @ViewBuilder private func action(_ state: Updater.State) -> some View {
+        switch state {
+        case .available(let update):
+            Button { model.updater.download(update) } label: { IconLabel(icon: "arrow-down-to-line", title: "Скачать", color: Theme.accentInk) }
+                .buttonStyle(.sfPrimary)
+        case .ready:
+            Button { model.updater.installAndRelaunch() } label: { IconLabel(icon: "rotate-ccw", title: "Перезапустить", color: Theme.accentInk) }
+                .buttonStyle(.sfPrimary)
+        case .checking, .downloading, .installing:
+            ProgressView().controlSize(.small)
+        default:
+            Button("Проверить") { model.updater.check(userInitiated: true) }.buttonStyle(.sfSecondary)
+        }
+    }
+
+    private func notes(_ markdown: String) -> AttributedString {
+        // Drop images and HTML from release notes; keep the text formatting.
+        let cleaned = markdown.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { !$0.contains("<img") && !$0.hasPrefix("<p") }
+            .joined(separator: "\n")
+        return (try? AttributedString(markdown: cleaned, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+            ?? AttributedString(cleaned)
     }
 }
 
