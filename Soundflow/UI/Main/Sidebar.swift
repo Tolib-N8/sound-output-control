@@ -53,7 +53,7 @@ struct Sidebar: View {
             Text(title).sectionLabelStyle()
             Spacer()
             Button(action: action) { Icon("plus", size: 14, color: Theme.text3) }
-                .buttonStyle(.plain)
+                .buttonStyle(.sfPlain)
                 .help(help)
         }
         .padding(.horizontal, 8)
@@ -108,6 +108,7 @@ struct SidebarDeviceRow: View {
             }
         }
         .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(Theme.accent, lineWidth: targeted ? 1.5 : 0))
+        .iconTapTrigger()
         .onTapGesture { model.selection = .device(device.uid) }
         .contextMenu {
             Button("Сделать основным") { model.makeDefault(device.uid) }
@@ -139,6 +140,7 @@ struct SidebarOfflineRow: View {
         SidebarRow(icon: device.kind.icon, name: device.name, subtitle: "Не подключено", dimmed: true, subtitleColor: Theme.danger) {
             if count > 0 { Text("\(count)").font(.mono(11)).foregroundStyle(Theme.text3) }
         }
+        .iconTapTrigger()
         .onTapGesture { model.selection = .device(uid) }
     }
 }
@@ -157,6 +159,7 @@ struct SidebarMultiRow: View {
             if count > 0 { Text("\(count)").font(.mono(11)).foregroundStyle(Theme.text3) }
         }
         .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(Theme.accent, lineWidth: targeted ? 1.5 : 0))
+        .iconTapTrigger()
         .onTapGesture { model.selection = .multiOutput(multi.id) }
         .contextMenu {
             Button("Изменить…") { model.multiOutputDraft = multi }
@@ -189,6 +192,7 @@ struct SidebarProfileRow: View {
         .background(RoundedRectangle(cornerRadius: 8).fill(hover ? Theme.surface2.opacity(0.6) : .clear))
         .contentShape(Rectangle())
         .onHover { hover = $0 }
+        .iconTapTrigger()
         .onTapGesture { model.profiles.toggle(profile.id) }
         .contextMenu {
             Button(active ? "Выключить" : "Включить") { model.profiles.toggle(profile.id) }
@@ -217,7 +221,7 @@ struct EngineStatusCard: View {
             .card(radius: 10, fill: Theme.bg)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.sfPlain)
     }
 
     private func describe() -> (Color, String, String) {

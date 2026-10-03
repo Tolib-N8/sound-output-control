@@ -80,7 +80,7 @@ struct OutputMapView: View {
                     }
                     .padding(.horizontal, 10).padding(.vertical, 7).card(radius: 8)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.sfPlain)
                 .help("Сгруппировать приложения по устройствам, чтобы провода не пересекались")
                 toolbarButton("minus") { zoom = max(0.6, zoom - 0.1) }
                 Text("\(Int((zoom * 100).rounded()))%").font(.ui(11)).foregroundStyle(Theme.text2).frame(width: 35)
@@ -93,7 +93,7 @@ struct OutputMapView: View {
         Button(action: action) {
             Icon(icon, size: 14, color: Theme.text2).padding(.horizontal, 10).padding(.vertical, 7).card(radius: 8)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.sfPlain)
     }
 
     private var legend: some View {
@@ -271,6 +271,7 @@ struct OutputMapView: View {
             model.selection = .app(app.bundleID)
         }
         .onTapGesture { popoverApp = app.bundleID }
+        .iconTapTrigger()
         .popover(isPresented: Binding(get: { popoverApp == app.bundleID }, set: { if !$0 { popoverApp = nil } }), arrowEdge: .trailing) {
             SoundPopover(app: app, colors: Dictionary(uniqueKeysWithValues: makeLayout(width: mapWidth ?? 1000).outputs.map { ($0.ref, $0.color) })) {
                 popoverApp = nil
@@ -338,6 +339,7 @@ struct OutputMapView: View {
                                                                  lineWidth: isTarget ? 1.5 : 1))
         .shadow(color: isTarget ? item.color.opacity(0.25) : .clear, radius: 16)
         .contentShape(Rectangle())
+        .iconTapTrigger()
         .onTapGesture(count: 2) {
             if let multi = item.multi { model.selection = .multiOutput(multi.id) } else { model.selection = .device(item.ref) }
         }
@@ -355,7 +357,7 @@ struct OutputMapView: View {
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.white.opacity(0.13), style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.sfPlain)
     }
 
     private func dragGhost(_ drag: DragState) -> some View {
@@ -425,7 +427,7 @@ struct SoundPopover: View {
                     Text(model.statusText(app).text).font(.ui(11)).foregroundStyle(Theme.text3)
                 }
                 Spacer()
-                Button(action: dismiss) { Icon("x", size: 14, color: Theme.text3) }.buttonStyle(.plain)
+                Button(action: dismiss) { Icon("x", size: 14, color: Theme.text3) }.buttonStyle(.sfPlain)
             }
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .bottom) {
@@ -476,12 +478,12 @@ struct SoundPopover: View {
                             .background(RoundedRectangle(cornerRadius: 7).fill(checked ? Theme.accent.opacity(0.08) : .clear))
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.sfPlain)
                     }
                 }
             }
             HStack {
-                Button("Сбросить") { model.resetRule(app.bundleID) }.buttonStyle(.plain).font(.ui(12)).foregroundStyle(Theme.text3)
+                Button("Сбросить") { model.resetRule(app.bundleID) }.buttonStyle(.sfPlain).font(.ui(12)).foregroundStyle(Theme.text3)
                 Spacer()
                 Button {
                     dismiss()
@@ -494,7 +496,7 @@ struct SoundPopover: View {
                     }
                     .foregroundStyle(Theme.accent)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.sfPlain)
             }
             .padding(.top, 12)
             .overlay(alignment: .top) { Divider1() }
@@ -510,7 +512,7 @@ struct SoundPopover: View {
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.border))
                 .overlay(Icon(icon, size: 14, color: Theme.text2))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.sfPlain)
         .help(help)
     }
 }

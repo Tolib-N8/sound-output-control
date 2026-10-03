@@ -12,7 +12,7 @@ struct DeviceDetailView: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 20) {
                 HStack(spacing: 6) {
-                    Button("Устройства") { model.selection = nil }.buttonStyle(.plain).foregroundStyle(Theme.text3)
+                    Button("Устройства") { model.selection = nil }.buttonStyle(.sfPlain).foregroundStyle(Theme.text3)
                     Icon("chevron-right", size: 12, color: Theme.text3)
                     Text(name).foregroundStyle(Theme.text2)
                 }
@@ -200,7 +200,7 @@ struct DeviceAppRow: View {
                     .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.border))
                     .overlay(Icon("arrow-right-left", size: 14, color: Theme.text2))
             }
-            .menuStyle(.button).buttonStyle(.plain)
+            .menuStyle(.button).buttonStyle(.sfPlain)
             .menuIndicator(.hidden)
             .fixedSize()
         }
@@ -293,7 +293,7 @@ struct DeviceSettingsCard: View {
                 } label: {
                     SelectLabel(icon: "audio-waveform", text: "\(rateText(device.sampleRate)) · \(device.bitDepth) бит · \(device.outputChannels == 1 ? "Моно" : "Стерео")")
                 }
-                .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden)
+                .menuStyle(.button).buttonStyle(.sfPlain).menuIndicator(.hidden)
             }
             VStack(alignment: .leading, spacing: 8) {
                 Text("РЕЗЕРВНОЕ УСТРОЙСТВО").sectionLabelStyle()
@@ -306,7 +306,7 @@ struct DeviceSettingsCard: View {
                 } label: {
                     SelectLabel(icon: fallback.map(model.icon(of:)) ?? "layers", text: fallbackName)
                 }
-                .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden)
+                .menuStyle(.button).buttonStyle(.sfPlain).menuIndicator(.hidden)
             }
         }
         .padding(18)
@@ -379,7 +379,7 @@ struct MultiOutputDetailView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
                     HStack(spacing: 6) {
-                        Button("Устройства") { model.selection = nil }.buttonStyle(.plain).foregroundStyle(Theme.text3)
+                        Button("Устройства") { model.selection = nil }.buttonStyle(.sfPlain).foregroundStyle(Theme.text3)
                         Icon("chevron-right", size: 12, color: Theme.text3)
                         Text(multi.name).foregroundStyle(Theme.text2)
                     }
@@ -458,9 +458,9 @@ struct DisconnectToast: View {
                         .padding(.horizontal, 12).padding(.vertical, 7)
                         .background(RoundedRectangle(cornerRadius: 8).fill(Theme.warning))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.sfPlain)
             }
-            Button { model.toast = nil } label: { Icon("x", size: 14, color: Theme.text3) }.buttonStyle(.plain)
+            Button { model.toast = nil } label: { Icon("x", size: 14, color: Theme.text3) }.buttonStyle(.sfPlain)
         }
         .padding(.vertical, 12).padding(.horizontal, 14)
         .frame(maxWidth: 772)

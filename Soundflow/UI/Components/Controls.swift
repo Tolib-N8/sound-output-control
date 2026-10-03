@@ -168,7 +168,7 @@ struct SegmentedControl<Value: Hashable>: View {
                     }
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.sfPlain)
             }
         }
         .padding(3)
@@ -183,6 +183,12 @@ struct SFButtonStyle: ButtonStyle {
     var kind: Kind = .secondary
 
     func makeBody(configuration: Configuration) -> some View {
+        IconPressReporter(isPressed: configuration.isPressed) {
+            label(configuration)
+        }
+    }
+
+    private func label(_ configuration: Configuration) -> some View {
         configuration.label
             .font(.ui(12, .medium))
             .lineLimit(1)

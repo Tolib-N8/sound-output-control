@@ -36,7 +36,7 @@ struct ProfileEditor: View {
                         model.hotkeys.registerAll()
                         dismiss()
                     } label: { IconLabel(icon: "trash-2", title: "Удалить профиль", color: Theme.danger) }
-                        .buttonStyle(.plain).font(.ui(12, .medium)).foregroundStyle(Theme.danger)
+                        .buttonStyle(.sfPlain).font(.ui(12, .medium)).foregroundStyle(Theme.danger)
                 }
             } trailing: {
                 Button("Отмена") { dismiss() }.buttonStyle(.sfSecondary).keyboardShortcut(.cancelAction)
@@ -64,7 +64,7 @@ struct ProfileEditor: View {
                     RoundedRectangle(cornerRadius: 10).fill(Theme.accent).frame(width: 42, height: 42)
                         .overlay(Icon(draft.icon, size: 20, color: Theme.accentInk))
                 }
-                .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+                .menuStyle(.button).buttonStyle(.sfPlain).menuIndicator(.hidden).fixedSize()
             }
             LabeledField(label: "НАЗВАНИЕ") { SFTextField(text: $draft.name) }.frame(width: 283)
             LabeledField(label: "ГОРЯЧАЯ КЛАВИША") {
@@ -127,6 +127,7 @@ struct ProfileEditor: View {
         .background(Capsule().fill(enabled ? Theme.accent.opacity(0.094) : Theme.surface))
         .overlay(Capsule().strokeBorder(enabled ? Theme.accent.opacity(0.33) : Theme.border))
         .contentShape(Capsule())
+        .iconTapTrigger()
         .onTapGesture {
             if enabled { draft.enabledTriggers.remove(index) } else { draft.enabledTriggers.insert(index) }
         }
@@ -160,7 +161,7 @@ struct ProfileEditor: View {
             Circle().strokeBorder(Color.white.opacity(0.13)).frame(width: 34, height: 34)
                 .overlay(Icon("plus", size: 14, color: Theme.text2))
         }
-        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+        .menuStyle(.button).buttonStyle(.sfPlain).menuIndicator(.hidden).fixedSize()
     }
 
     private var rules: some View {
@@ -227,18 +228,18 @@ struct ProfileEditor: View {
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(RoundedRectangle(cornerRadius: 6).fill(Theme.dangerFill.opacity(0.13)))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.sfPlain)
                     Spacer(minLength: 0)
                 } else {
                     Button { muted.wrappedValue = true } label: { Icon("volume-2", size: 13, color: Theme.text3) }
-                        .buttonStyle(.plain).help("Без звука")
+                        .buttonStyle(.sfPlain).help("Без звука")
                     SFSlider(value: volume).frame(width: 140)
                     Text(percent(volume.wrappedValue)).font(.mono(12)).foregroundStyle(Theme.text2).frame(width: 28, alignment: .leading)
                 }
             }
             .frame(width: 220, alignment: .leading)
             OutputSelect(ref: output, emptyTitle: "Основной выход", width: 190)
-            Button(action: remove) { Icon("trash-2", size: 14, color: Theme.text3) }.buttonStyle(.plain).frame(width: 16)
+            Button(action: remove) { Icon("trash-2", size: 14, color: Theme.text3) }.buttonStyle(.sfPlain).frame(width: 16)
         }
         .padding(.vertical, 10).padding(.horizontal, 16)
         .overlay(alignment: .top) { Divider1() }
@@ -283,7 +284,7 @@ struct ProfileEditor: View {
                 Text("Добавить приложение").font(.ui(12, .medium)).foregroundStyle(Theme.accent)
             }
         }
-        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+        .menuStyle(.button).buttonStyle(.sfPlain).menuIndicator(.hidden).fixedSize()
     }
 
     // MARK: - Actions
@@ -381,7 +382,7 @@ struct ScheduleEditor: View {
                             .frame(width: 30, height: 26)
                             .background(RoundedRectangle(cornerRadius: 6).fill(on ? Theme.accent : Theme.surface2))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.sfPlain)
                 }
             }
             HStack(spacing: 10) {

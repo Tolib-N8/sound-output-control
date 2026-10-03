@@ -137,7 +137,7 @@ struct HotkeyRecorder: View {
             label
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.sfPlain)
         .help("Нажмите, чтобы изменить сочетание")
         .onDisappear { stop() }
     }
@@ -278,7 +278,7 @@ struct DeviceSettingsPage: View {
                         Spacer(minLength: 0)
                         if !item.4 {
                             Button { forget(item.0) } label: { Icon("trash-2", size: 14, color: Theme.text3) }
-                                .buttonStyle(.plain).help("Забыть устройство")
+                                .buttonStyle(.sfPlain).help("Забыть устройство")
                         }
                         SFSwitch(isOn: Binding(get: { !hidden }, set: { visible in model.updateDevice(item.0) { $0.hidden = !visible } }))
                     }
@@ -313,7 +313,7 @@ struct DeviceSettingsPage: View {
                     .padding(.vertical, 12).padding(.horizontal, 14)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.sfPlain)
                 .overlay(alignment: .top) { if !model.config.multiOutputs.isEmpty { Divider1() } }
             }
         } right: {
@@ -430,7 +430,7 @@ struct ProfileCard: View {
             Spacer(minLength: 0)
             if let hotkey = profile.hotkey { KeyCap(label: hotkey.caps.joined()) }
             Button { model.profileDraft = profile } label: { Icon("pencil", size: 14, color: Theme.text3) }
-                .buttonStyle(.plain).help("Изменить")
+                .buttonStyle(.sfPlain).help("Изменить")
             Menu {
                 Button(active ? "Выключить" : "Включить") { model.profiles.toggle(profile.id) }
                 Button("Дублировать") {
@@ -446,12 +446,13 @@ struct ProfileCard: View {
                     model.config.profiles.removeAll { $0.id == profile.id }
                 }
             } label: { Icon("ellipsis", size: 16, color: Theme.text3) }
-                .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+                .menuStyle(.button).buttonStyle(.sfPlain).menuIndicator(.hidden).fixedSize()
         }
         .padding(14)
         .background(RoundedRectangle(cornerRadius: 12).fill(active ? Theme.accent.opacity(0.04) : Theme.surface))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(active ? Theme.accent.opacity(0.3) : Theme.border))
         .contentShape(Rectangle())
+        .iconTapTrigger(animate: false)
         .onTapGesture(count: 2) { model.profileDraft = profile }
     }
 
@@ -565,7 +566,7 @@ struct DriverSettings: View {
                 permission("Уведомления", icon: "bell", granted: notificationStatus == .authorized,
                            pending: notificationStatus == .notDetermined) {
                     if notificationStatus == .notDetermined {
-                        NotificationService.requestAuthorization { _ in refreshNotifications() }
+                        NotificationService.requestAuthorization { _ in Task { @MainActor in refreshNotifications() } }
                     } else {
                         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")!)
                     }
@@ -616,7 +617,7 @@ struct DriverSettings: View {
                 StatusPill(text: granted ? "Разрешено" : pending ? "Запросить" : "Не разрешено",
                            color: granted ? Theme.success : Theme.warning)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.sfPlain)
             .disabled(granted)
         }
     }
@@ -650,8 +651,8 @@ struct AboutSettings: View {
             .frame(maxWidth: 480)
 
             HStack(spacing: 18) {
-                Button("Лицензии") { showLicenses = true }.buttonStyle(.plain).font(.ui(12)).foregroundStyle(Theme.text2)
-                Button("Показать онбординг") { model.openOnboarding?() }.buttonStyle(.plain).font(.ui(12)).foregroundStyle(Theme.text2)
+                Button("Лицензии") { showLicenses = true }.buttonStyle(.sfPlain).font(.ui(12)).foregroundStyle(Theme.text2)
+                Button("Показать онбординг") { model.openOnboarding?() }.buttonStyle(.sfPlain).font(.ui(12)).foregroundStyle(Theme.text2)
             }
             Text("© 2026 Soundflow. Сделано для тех, кто слушает внимательно.").font(.ui(11)).foregroundStyle(Theme.text3)
         }

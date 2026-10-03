@@ -53,7 +53,7 @@ struct NoPermissionState: View {
                 .padding(.horizontal, 12).padding(.vertical, 7)
                 .background(RoundedRectangle(cornerRadius: 8).fill(Theme.warning))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.sfPlain)
         }
         .frame(minHeight: 0)
     }
@@ -80,7 +80,7 @@ struct DriverErrorBanner: View {
                         .padding(.horizontal, 12).padding(.vertical, 7)
                         .background(RoundedRectangle(cornerRadius: 8).fill(Theme.dangerFill))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.sfPlain)
                     Button { showLog = true } label: { IconLabel(icon: "file-text", title: "Журнал", color: Theme.text2) }
                         .buttonStyle(.sfSecondary)
                 }

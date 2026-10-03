@@ -48,28 +48,6 @@ extension Font {
     }
 }
 
-/// Lucide icon from the asset catalog, tinted like text.
-struct Icon: View {
-    let name: String
-    var size: CGFloat = 14
-    var color: Color = Theme.text2
-
-    init(_ name: String, size: CGFloat = 14, color: Color = Theme.text2) {
-        self.name = name
-        self.size = size
-        self.color = color
-    }
-
-    var body: some View {
-        Image("lucide.\(name)")
-            .renderingMode(.template)
-            .resizable()
-            .interpolation(.high)
-            .frame(width: size, height: size)
-            .foregroundStyle(color)
-    }
-}
-
 extension View {
     /// Uppercase section label: 11 pt semibold, tracking 0.8, tertiary color.
     func sectionLabelStyle() -> some View {

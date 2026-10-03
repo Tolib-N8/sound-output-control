@@ -30,7 +30,7 @@ struct OutputPicker: View {
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(fallback ? Theme.warning.opacity(0.33) : open ? Theme.accent.opacity(0.53) : explicit ? Theme.accent.opacity(0.33) : Theme.border))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.sfPlain)
         .popover(isPresented: $open, arrowEdge: .bottom) {
             OutputMenu(app: app) { open = false }
         }
@@ -108,7 +108,7 @@ struct MenuItem: View {
             .background(RoundedRectangle(cornerRadius: 6).fill(checked ? Theme.accent.opacity(0.1) : hover ? Color.white.opacity(0.05) : .clear))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.sfPlain)
         .disabled(disabled)
         .opacity(disabled ? 0.45 : 1)
         .onHover { hover = $0 }

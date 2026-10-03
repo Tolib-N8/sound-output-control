@@ -117,13 +117,13 @@ struct MultiOutputEditor: View {
                     Button { TestTone.play(on: draft.deviceUIDs, delays: totalDelays) } label: {
                         IconLabel(icon: "play", title: "Проверить звук", color: Theme.text2)
                     }
-                    .buttonStyle(.plain).font(.ui(12)).foregroundStyle(Theme.text2)
+                    .buttonStyle(.sfPlain).font(.ui(12)).foregroundStyle(Theme.text2)
                     .disabled(draft.deviceUIDs.isEmpty)
                     if !isNew {
                         Button { model.deleteMultiOutput(draft.id); dismiss() } label: {
                             IconLabel(icon: "trash-2", title: "Удалить", color: Theme.danger)
                         }
-                        .buttonStyle(.plain).font(.ui(12)).foregroundStyle(Theme.danger)
+                        .buttonStyle(.sfPlain).font(.ui(12)).foregroundStyle(Theme.danger)
                     }
                 }
             } trailing: {
@@ -167,7 +167,7 @@ struct MultiOutputEditor: View {
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.sfPlain)
 
             if selected {
                 HStack(spacing: 4) {
@@ -184,7 +184,7 @@ struct MultiOutputEditor: View {
                 Text("—").font(.mono(12)).foregroundStyle(Theme.text3).frame(width: 80, alignment: .trailing)
             }
             Button { draft.clockUID = device.uid } label: { RadioDot(selected: draft.clockUID == device.uid && selected) }
-                .buttonStyle(.plain)
+                .buttonStyle(.sfPlain)
                 .frame(width: 40)
                 .disabled(!selected)
                 .help("Главные часы — остальные устройства подстраиваются под них")

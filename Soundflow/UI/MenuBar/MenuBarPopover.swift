@@ -20,11 +20,12 @@ struct MenuBarPopover: View {
                 .padding(.horizontal, 4)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.sfPlain)
         }
         .padding(14)
         .frame(width: 348)
         .background(Color(hex: 0x17191D, alpha: 0.95))
+        .background(WindowKeyObserver { model.menuBarOpenCount += 1 })
         .preferredColorScheme(.dark)
     }
 
@@ -50,9 +51,9 @@ struct MenuBarPopover: View {
                 .padding(.horizontal, 8).padding(.vertical, 4)
                 .card(radius: 6, fill: Theme.surface2)
             }
-            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+            .menuStyle(.button).buttonStyle(.sfPlain).menuIndicator(.hidden).fixedSize()
             Button { model.openSettings?() } label: { Icon("settings", size: 15, color: Theme.text2) }
-                .buttonStyle(.plain)
+                .buttonStyle(.sfPlain)
         }
         .padding(.horizontal, 2)
     }
@@ -75,7 +76,7 @@ struct MenuBarPopover: View {
                         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(active ? .clear : Theme.border))
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.sfPlain)
                     .help(device.name)
                 }
             }
@@ -135,7 +136,7 @@ struct MenuBarAppRow: View {
                     .overlay(Icon(rule.outputs.count > 1 ? "git-merge" : rule.outputs.first.map(model.icon(of:)) ?? model.devices.defaultDevice?.kind.icon ?? "speaker",
                                   size: 14, color: rule.outputs.isEmpty ? Theme.text2 : Theme.accent))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.sfPlain)
             .help(model.outputLabel(app.bundleID))
             .popover(isPresented: $picking, arrowEdge: .trailing) {
                 OutputMenu(app: app) { picking = false }
@@ -147,26 +148,72 @@ struct MenuBarAppRow: View {
     }
 }
 
-/// The status item icon: waveform, dimmed with a red dot when muted, arrows while switching, alert on error.
+/// The status item icon: waveform, volume-x when muted, arrows while switching, alert on error.
+/// Frames are rendered from the animated glyph so the icon plays its animation on open and on state changes.
 struct MenuBarIcon: View {
     @Environment(AppModel.self) private var model
+    @State private var t = 1.0
+    @State private var playback: Task<Void, Never>?
 
-    var body: some View {
-        let name: String = if case .error = model.engine.health { "triangle-alert" }
-            else if model.switchingDevice { "arrow-right-left" }
-            else if model.mainMuted { "volume-x" }
-            else { "audio-waveform" }
-        Image(nsImage: Self.image(name))
+    private var name: String {
+        if case .error = model.engine.health { return "triangle-alert" }
+        if model.switchingDevice { return "arrow-right-left" }
+        if model.mainMuted { return "volume-x" }
+        return "audio-waveform"
     }
 
-    private static func image(_ name: String) -> NSImage {
-        guard let source = NSImage(named: "lucide.\(name)") else { return NSImage() }
-        let size = NSSize(width: 16, height: 16)
-        let image = NSImage(size: size, flipped: false) { rect in
-            source.draw(in: rect)
-            return true
+    var body: some View {
+        Image(nsImage: Self.frame(name, t))
+            .onChange(of: name) { _, _ in play() }
+            .onChange(of: model.menuBarOpenCount) { _, _ in play() }
+    }
+
+    private func play() {
+        playback?.cancel()
+        let duration = IconMotions.motion(for: name).duration
+        let frames = max(12, Int(duration * 40))
+        playback = Task { @MainActor in
+            for frame in 0...frames {
+                guard !Task.isCancelled else { return }
+                t = Double(frame) / Double(frames)
+                try? await Task.sleep(for: .seconds(duration / Double(frames)))
+            }
         }
+    }
+
+    private static func frame(_ name: String, _ t: Double) -> NSImage {
+        let canvas = GlyphCanvas(parts: GlyphStore.parts(name), color: .black, size: 16, t: t, motion: IconMotions.motion(for: name))
+        let renderer = ImageRenderer(content: canvas)
+        renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
+        let image = renderer.nsImage ?? NSImage()
         image.isTemplate = true
         return image
+    }
+}
+
+/// Calls `action` every time the hosting window becomes key (the menu bar window opening).
+struct WindowKeyObserver: NSViewRepresentable {
+    let action: () -> Void
+
+    func makeNSView(context: Context) -> ObserverView {
+        let view = ObserverView()
+        view.action = action
+        return view
+    }
+
+    func updateNSView(_ view: ObserverView, context: Context) { view.action = action }
+
+    final class ObserverView: NSView {
+        var action: (() -> Void)?
+        private var observer: NSObjectProtocol?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let observer { NotificationCenter.default.removeObserver(observer) }
+            guard let window else { return }
+            observer = NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.action?() }
+            }
+        }
     }
 }

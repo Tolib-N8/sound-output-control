@@ -50,7 +50,7 @@ private struct FirstSoundView: View {
                     Text("Начал воспроизводить звук. Куда вывести?").font(.ui(11)).foregroundStyle(Theme.text3)
                 }
                 Spacer()
-                Button(action: close) { Icon("x", size: 14, color: Theme.text3) }.buttonStyle(.plain)
+                Button(action: close) { Icon("x", size: 14, color: Theme.text3) }.buttonStyle(.sfPlain)
             }
             VStack(spacing: 2) {
                 ForEach(model.outputOptions.filter(\.connected)) { option in

@@ -143,7 +143,7 @@ struct OnboardingView: View {
                             Icon("external-link", size: 12, color: Theme.text2)
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.sfPlain)
                 }
                 .padding(14)
                 .card(radius: 12)
@@ -197,7 +197,7 @@ struct OnboardingView: View {
                                 .background(selected ? Theme.accent.opacity(0.06) : .clear)
                                 .contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.sfPlain)
                             .overlay(alignment: .top) { if index > 0 { Divider1() } }
                         }
                     }
@@ -231,7 +231,7 @@ struct OnboardingView: View {
                 .padding(.horizontal, 16).padding(.vertical, 9)
                 .card(radius: 8, fill: Theme.surface2)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.sfPlain)
     }
 
     private func nextButton(_ title: String, action: @escaping () -> Void) -> some View {
@@ -244,7 +244,7 @@ struct OnboardingView: View {
             .padding(.horizontal, 16).padding(.vertical, 9)
             .background(RoundedRectangle(cornerRadius: 8).fill(Theme.accent))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.sfPlain)
         .keyboardShortcut(.defaultAction)
     }
 }

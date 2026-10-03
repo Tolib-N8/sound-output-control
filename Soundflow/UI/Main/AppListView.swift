@@ -130,7 +130,7 @@ struct AppRow: View {
             } label: {
                 Icon("ellipsis", size: 16, color: Theme.text3)
             }
-            .menuStyle(.button).buttonStyle(.plain)
+            .menuStyle(.button).buttonStyle(.sfPlain)
             .menuIndicator(.hidden)
             .frame(width: 20)
         }
@@ -142,6 +142,7 @@ struct AppRow: View {
         }
         .contentShape(Rectangle())
         .onHover { hover = $0 }
+        .iconTapTrigger(animate: false)
         .onTapGesture {
             withAnimation(.easeOut(duration: 0.2)) { model.selection = selected ? nil : .app(app.bundleID) }
         }
@@ -193,7 +194,7 @@ struct MuteButton: View {
                 .frame(width: size, height: size)
                 .overlay(Icon(muted ? "volume-x" : "volume-2", size: 14, color: muted ? Theme.danger : Theme.text2))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.sfPlain)
         .help(muted ? "Включить звук" : "Выключить звук")
     }
 }
@@ -246,6 +247,7 @@ struct DeviceLoadCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .card(radius: 10, stroke: active ? Theme.accent.opacity(0.25) : Theme.border)
         .contentShape(Rectangle())
+        .iconTapTrigger()
         .onTapGesture { model.selection = .device(device.uid) }
         .dropDestination(for: String.self) { items, _ in
             for bundleID in items { model.assign(bundleID, to: device.uid, additive: NSEvent.modifierFlags.contains(.option)) }

@@ -31,7 +31,7 @@ struct AppInspector: View {
             Button { withAnimation(.easeOut(duration: 0.2)) { model.selection = nil } } label: {
                 Icon("x", size: 16, color: Theme.text3)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.sfPlain)
             .keyboardShortcut(.cancelAction)
         }
     }
@@ -81,7 +81,7 @@ struct AppInspector: View {
                         .background(checked ? Theme.accent.opacity(0.05) : .clear)
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.sfPlain)
                     .overlay(alignment: .top) { if index > 0 { Divider1() } }
                 }
             }

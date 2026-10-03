@@ -32,6 +32,8 @@ struct MainWindowView: View {
         #if DEBUG
         if model.debugScreen == "menubar" {
             MenuBarPopover().frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if model.debugScreen == "icons" {
+            IconGallery()
         } else {
             mainContent
         }
@@ -122,7 +124,7 @@ struct MasterVolume: View {
             Button { model.muteAll() } label: {
                 Icon(model.mainMuted ? "volume-x" : "volume-2", size: 16, color: model.mainMuted ? Theme.danger : Theme.text2)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.sfPlain)
             .help(model.mainMuted ? "Включить звук" : "Выключить звук")
             SFSlider(value: volume, fill: Theme.text)
                 .frame(width: sliderWidth)

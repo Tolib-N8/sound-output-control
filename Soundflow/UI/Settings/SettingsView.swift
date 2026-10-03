@@ -51,7 +51,7 @@ struct SettingsView: View {
                             .background(RoundedRectangle(cornerRadius: 8).fill(selected ? Theme.surface2 : .clear))
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.sfPlain)
                     }
                     Spacer()
                 }
@@ -178,7 +178,7 @@ struct SettingsSelect<Content: View>: View {
             .card(radius: 8, fill: Theme.surface2)
             .contentShape(Rectangle())
         }
-        .menuStyle(.button).buttonStyle(.plain)
+        .menuStyle(.button).buttonStyle(.sfPlain)
         .menuIndicator(.hidden)
         .fixedSize()
     }

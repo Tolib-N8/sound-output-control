@@ -54,6 +54,8 @@ final class AppModel {
     var profileDraft: Profile?
     var switchingDevice = false
     var settingsTab: SettingsTab = .general
+    /// Bumped whenever the menu bar window opens (drives the status icon animation).
+    var menuBarOpenCount = 0
     private(set) var waiting: Set<String> = []
     private(set) var ducked: Set<String> = []
 
