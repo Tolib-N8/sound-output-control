@@ -42,6 +42,8 @@ enum MiniPlayer {
         frame.origin.y += frame.height - size.height
         frame.size = size
         panel.setFrame(frame, display: true, animate: animate)
+        // The window shadow follows the rounded, transparent-cornered content.
+        panel.invalidateShadow()
     }
 
     private static func makePanel(model: AppModel) -> NSPanel {
@@ -86,7 +88,6 @@ struct MiniPlayerView: View {
         Group {
             if compact { capsule } else { expanded }
         }
-        .padding(18) // room for the shadow
         .onChange(of: compact) { _, _ in
             DispatchQueue.main.async { MiniPlayer.resize(model: model) }
         }
@@ -150,10 +151,10 @@ struct MiniPlayerView: View {
             .frame(width: 150, alignment: .leading)
             SpectrumView(style: .bars, bandCount: 5, spacing: 2).frame(width: 18, height: 14)
             TransportControls(size: .small)
+            windowButtons
         }
-        .padding(.leading, 6).padding(.trailing, 8).padding(.vertical, 6)
+        .padding(.leading, 6).padding(.trailing, 10).padding(.vertical, 6)
         .background(chrome(radius: 26))
-        .overlay(alignment: .topTrailing) { windowButtons.offset(x: 8, y: -8) }
     }
 
     private func chrome(radius: CGFloat) -> some View {
@@ -161,7 +162,6 @@ struct MiniPlayerView: View {
             .fill(Color(hex: 0x121318, alpha: 0.92))
             .background(VisualEffectBlur().clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous)))
             .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Color.white.opacity(0.12)))
-            .shadow(color: .black.opacity(0.45), radius: 18, y: 12)
     }
 
     /// Collapse/expand and close, shown on hover.

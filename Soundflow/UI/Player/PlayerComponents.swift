@@ -103,7 +103,8 @@ struct PlaybackScrubber: View {
                     ZStack(alignment: .leading) {
                         Capsule().fill(.white.opacity(0.1))
                         Capsule().fill(model.playerPalette.accent).frame(width: max(height, width * fraction))
-                        if interactive && duration > 0 {
+                        // Thin bars (mini player, menu bar) stay a clean line without a knob.
+                        if interactive && duration > 0 && height >= 5 {
                             Circle().fill(.white).frame(width: height + 8, height: height + 8)
                                 .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
                                 .offset(x: width * fraction - (height + 8) / 2)
