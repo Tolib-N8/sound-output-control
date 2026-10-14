@@ -138,13 +138,25 @@ struct PlaybackScrubber: View {
     }
 }
 
+/// Keeps one analyzer per view, created lazily on the first frame (and recreated if the band count changes).
+final class AnalyzerHolder {
+    private var current: SpectrumAnalyzer?
+
+    func analyzer(bands: Int) -> SpectrumAnalyzer {
+        if let current, current.bandCount == bands { return current }
+        let fresh = SpectrumAnalyzer(bandCount: bands)
+        current = fresh
+        return fresh
+    }
+}
+
 /// Live spectrum of the now-playing app's audio, drawn in the artwork color.
 struct SpectrumView: View {
     @Environment(AppModel.self) private var model
     var style: VisualizerStyle = .bars
     var bandCount = 40
     var spacing: CGFloat = 4
-    @State private var analyzer: SpectrumAnalyzer?
+    @State private var holder = AnalyzerHolder()
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 60)) { _ in
@@ -158,12 +170,11 @@ struct SpectrumView: View {
                 }
             }
         }
-        .onAppear { if analyzer == nil { analyzer = SpectrumAnalyzer(bandCount: bandCount) } }
         .accessibilityLabel("Визуализатор звука")
     }
 
     private func tick() -> [Float] {
-        guard let analyzer else { return [Float](repeating: 0, count: bandCount) }
+        let analyzer = holder.analyzer(bands: bandCount)
         if let source = model.nowPlaying.current?.bundleID, let state = model.engine.renderState(source),
            model.nowPlaying.current?.isPlaying == true {
             analyzer.update(from: state)
