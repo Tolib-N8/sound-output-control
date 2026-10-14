@@ -6,6 +6,7 @@ struct MenuBarPopover: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
+            NowPlayingCard()
             master
             apps
             Divider1()
@@ -25,7 +26,10 @@ struct MenuBarPopover: View {
         .padding(14)
         .frame(width: 348)
         .background(Color(hex: 0x17191D, alpha: 0.95))
-        .background(WindowKeyObserver { model.menuBarOpenCount += 1 })
+        .background(WindowKeyObserver(onResign: { model.engine.setMeteringConsumer("menu-bar", active: false) }) {
+            model.menuBarOpenCount += 1
+            model.engine.setMeteringConsumer("menu-bar", active: true)
+        })
         .preferredColorScheme(.dark)
     }
 
@@ -193,24 +197,35 @@ struct MenuBarIcon: View {
 
 /// Calls `action` every time the hosting window becomes key (the menu bar window opening).
 struct WindowKeyObserver: NSViewRepresentable {
+    var onResign: (() -> Void)?
     let action: () -> Void
 
     func makeNSView(context: Context) -> ObserverView {
         let view = ObserverView()
         view.action = action
+        view.onResign = onResign
         return view
     }
 
-    func updateNSView(_ view: ObserverView, context: Context) { view.action = action }
+    func updateNSView(_ view: ObserverView, context: Context) {
+        view.action = action
+        view.onResign = onResign
+    }
 
     final class ObserverView: NSView {
         var action: (() -> Void)?
+        var onResign: (() -> Void)?
         private var observer: NSObjectProtocol?
+        private var resignObserver: NSObjectProtocol?
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             if let observer { NotificationCenter.default.removeObserver(observer) }
+            if let resignObserver { NotificationCenter.default.removeObserver(resignObserver) }
             guard let window else { return }
+            resignObserver = NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification, object: window, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.onResign?() }
+            }
             observer = NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.action?() }
             }

@@ -99,6 +99,7 @@ enum RouteResolver {
     static func needsTap(rule: AppRule, route: ResolvedRoute, defaultUID: String?, gainFactor: Double, normalize: Bool) -> Bool {
         if route.isWaiting { return true }
         if rule.muted || abs(rule.volume - 1) > 0.001 || abs(rule.balance) > 0.001 { return true }
+        if rule.eq?.isActive == true { return true }
         if abs(gainFactor - 1) > 0.001 || normalize { return true }
         if route.followsDefault { return false }
         return route.outputs != (defaultUID.map { [$0] } ?? [])

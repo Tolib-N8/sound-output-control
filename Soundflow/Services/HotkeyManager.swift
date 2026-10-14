@@ -74,6 +74,7 @@ final class HotkeyManager {
             let index = options.firstIndex { $0.ref == current } ?? -1
             model.assign(app.bundleID, to: options[(index + 1) % options.count].ref)
         case .nextMainDevice: model.nextMainDevice()
+        case .toggleMiniPlayer: MiniPlayer.toggle(model: model)
         case .switchDevice1, .switchDevice2:
             let target = model.config.prefs.deviceHotkeyTargets[action]
                 ?? model.visibleDevices.dropFirst(action == .switchDevice1 ? 0 : 1).first?.uid

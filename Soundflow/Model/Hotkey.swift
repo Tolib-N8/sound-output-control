@@ -36,6 +36,7 @@ struct Hotkey: Codable, Hashable, Sendable {
         static let s = Key(code: UInt16(kVK_ANSI_S))
         static let m = Key(code: UInt16(kVK_ANSI_M))
         static let o = Key(code: UInt16(kVK_ANSI_O))
+        static let p = Key(code: UInt16(kVK_ANSI_P))
         static let one = Key(code: UInt16(kVK_ANSI_1))
         static let two = Key(code: UInt16(kVK_ANSI_2))
         static let three = Key(code: UInt16(kVK_ANSI_3))

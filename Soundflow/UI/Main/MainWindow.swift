@@ -37,7 +37,7 @@ struct MainWindowView: View {
         .onPreferenceChange(BrandFrameKey.self) { brandFrame = $0 }
         .coordinateSpace(name: "window")
         .ignoresSafeArea()
-        .background(WindowChrome(titlebarHeight: 52) { visible in model.engine.meteringEnabled = visible })
+        .background(WindowChrome(titlebarHeight: 52) { visible in model.engine.setMeteringConsumer("main-window", active: visible) })
         .preferredColorScheme(.dark)
         .frame(minWidth: 1120, minHeight: 680)
         .onAppear {
@@ -64,9 +64,14 @@ struct MainWindowView: View {
     /// Identity and depth of the current scene, used for the transition between scenes.
     private var scene: (id: String, rank: Int) {
         switch model.selection {
-        case .device(let uid): ("device:\(uid)", 2)
-        case .multiOutput(let id): ("multi:\(id)", 2)
-        default: model.mode == .list ? ("list", 0) : ("map", 1)
+        case .device(let uid): ("device:\(uid)", 3)
+        case .multiOutput(let id): ("multi:\(id)", 3)
+        default:
+            switch model.mode {
+            case .list: ("list", 0)
+            case .map: ("map", 1)
+            case .player: ("player", 2)
+            }
         }
     }
 
@@ -94,6 +99,8 @@ struct MainWindowView: View {
                 }
             case .map:
                 OutputMapView()
+            case .player:
+                PlayerView()
             }
         }
     }
@@ -118,6 +125,7 @@ struct Titlebar: View {
                 SegmentedControl(selection: $model.mode, items: [
                     .init(value: .list, title: "Список", icon: "list"),
                     .init(value: .map, title: "Карта", icon: "workflow"),
+                    .init(value: .player, title: "Плеер", icon: "music"),
                 ], outerRadius: 8, fill: Theme.bg, itemPadding: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10))
                 .onChange(of: model.mode) { _, _ in
                     if case .device = model.selection { model.selection = nil }

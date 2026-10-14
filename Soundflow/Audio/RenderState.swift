@@ -9,20 +9,52 @@ final class RenderState: @unchecked Sendable {
     private enum Slot: Int, CaseIterable {
         case targetGain, balance, normalize, currentGain, agcGain, envelope, peakL, peakR, rmsL, rmsR
         case cycles, renderNanos, overloads, inputOffset, budgetNanos
+        case sampleRate, eqEnabled, eqBank, spectrumCapture
     }
 
+    static let eqBands = 10
+    static let spectrumCapacity = 4096
+    private static let scratchFrames = 8192
+
     private let storage: UnsafeMutablePointer<Float>
+    /// Processed interleaved stereo for one cycle, copied to every output buffer.
+    private let scratch: UnsafeMutablePointer<Float>
+    /// Two banks of biquad coefficients (b0 b1 b2 a1 a2 per band); the inactive one is rewritten, then flipped.
+    private let eqCoefficients: UnsafeMutablePointer<Float>
+    /// Filter memory: per band, per channel, z1 and z2.
+    private let eqState: UnsafeMutablePointer<Float>
+    /// Ring buffer of recent mono samples for the spectrum visualizer.
+    private let spectrum: UnsafeMutablePointer<Float>
+    private let spectrumWrite: UnsafeMutablePointer<Int>
 
     init() {
         storage = .allocate(capacity: Slot.allCases.count)
         storage.initialize(repeating: 0, count: Slot.allCases.count)
+        scratch = .allocate(capacity: Self.scratchFrames * 2)
+        scratch.initialize(repeating: 0, count: Self.scratchFrames * 2)
+        eqCoefficients = .allocate(capacity: 2 * Self.eqBands * 5)
+        eqCoefficients.initialize(repeating: 0, count: 2 * Self.eqBands * 5)
+        eqState = .allocate(capacity: Self.eqBands * 4)
+        eqState.initialize(repeating: 0, count: Self.eqBands * 4)
+        spectrum = .allocate(capacity: Self.spectrumCapacity)
+        spectrum.initialize(repeating: 0, count: Self.spectrumCapacity)
+        spectrumWrite = .allocate(capacity: 1)
+        spectrumWrite.initialize(to: 0)
         storage[Slot.targetGain.rawValue] = 1
         storage[Slot.currentGain.rawValue] = 1
         storage[Slot.agcGain.rawValue] = 1
         storage[Slot.envelope.rawValue] = 0.1
+        storage[Slot.sampleRate.rawValue] = 48000
     }
 
-    deinit { storage.deallocate() }
+    deinit {
+        storage.deallocate()
+        scratch.deallocate()
+        eqCoefficients.deallocate()
+        eqState.deallocate()
+        spectrum.deallocate()
+        spectrumWrite.deallocate()
+    }
 
     private subscript(_ slot: Slot) -> Float {
         get { storage[slot.rawValue] }
@@ -36,6 +68,40 @@ final class RenderState: @unchecked Sendable {
     var inputOffset: Int { get { Int(self[.inputOffset]) } set { self[.inputOffset] = Float(newValue) } }
     /// Duration of one IO cycle in nanoseconds; used for load statistics.
     var budgetNanos: Float { get { self[.budgetNanos] } set { self[.budgetNanos] = newValue } }
+    /// Sample rate of the router's clock device.
+    var sampleRate: Double { get { Double(self[.sampleRate]) } set { self[.sampleRate] = Float(newValue) } }
+    /// Record recent samples for the spectrum visualizer.
+    var capturesSpectrum: Bool { get { self[.spectrumCapture] != 0 } set { self[.spectrumCapture] = newValue ? 1 : 0 } }
+    var eqEnabled: Bool { self[.eqEnabled] != 0 }
+
+    /// Installs equalizer filters without disturbing the render thread: the inactive bank is
+    /// written first and then made current with a single word store.
+    func setEqualizer(_ filters: [Biquad]?) {
+        guard let filters, filters.count == Self.eqBands, filters.contains(where: { $0 != .identity }) else {
+            self[.eqEnabled] = 0
+            return
+        }
+        let wasEnabled = eqEnabled
+        let bank = self[.eqBank] == 0 ? 1 : 0
+        let base = eqCoefficients + bank * Self.eqBands * 5
+        for (index, filter) in filters.enumerated() {
+            let c = base + index * 5
+            c[0] = Float(filter.b0); c[1] = Float(filter.b1); c[2] = Float(filter.b2)
+            c[3] = Float(filter.a1); c[4] = Float(filter.a2)
+        }
+        if !wasEnabled { eqState.update(repeating: 0, count: Self.eqBands * 4) }
+        self[.eqBank] = Float(bank)
+        self[.eqEnabled] = 1
+    }
+
+    /// Copies the most recent `count` mono samples (oldest first) for spectrum analysis.
+    func recentSamples(into buffer: UnsafeMutablePointer<Float>, count: Int) {
+        let count = min(count, Self.spectrumCapacity)
+        let end = spectrumWrite.pointee
+        for i in 0..<count {
+            buffer[i] = spectrum[(end - count + i) & (Self.spectrumCapacity - 1)]
+        }
+    }
 
     // Render thread → main thread
     var peak: (left: Float, right: Float) { (self[.peakL], self[.peakR]) }
@@ -113,19 +179,39 @@ final class RenderState: @unchecked Sendable {
         let leftPan: Float = balance > 0 ? 1 - balance : 1
         let rightPan: Float = balance < 0 ? 1 + balance : 1
 
-        var peakL: Float = 0, peakR: Float = 0
-        var sumL: Float = 0, sumR: Float = 0, measured = 0
-        for (bufferIndex, buffer) in outputs.enumerated() {
+        // Process once into the scratch buffer (stateful EQ must run exactly once per frame)…
+        let count = min(frames, Self.scratchFrames)
+        let bank: UnsafeMutablePointer<Float>? = self[.eqEnabled] != 0 ? eqCoefficients + Int(self[.eqBank]) * Self.eqBands * 5 : nil
+        var peakL: Float = 0, peakR: Float = 0, sumL: Float = 0, sumR: Float = 0
+        var gain = startGain
+        for frame in 0..<count {
+            gain += step
+            var l = left[frame * stride] * gain * leftPan
+            var r = right[frame * stride + rightOffset] * gain * rightPan
+            if let bank {
+                l = equalize(l, bank: bank, channel: 0)
+                r = equalize(r, bank: bank, channel: 1)
+            }
+            l = clamp(l)
+            r = clamp(r)
+            scratch[frame * 2] = l
+            scratch[frame * 2 + 1] = r
+            peakL = max(peakL, abs(l))
+            peakR = max(peakR, abs(r))
+            sumL += l * l
+            sumR += r * r
+        }
+        if self[.spectrumCapture] != 0 { captureSpectrum(scratch, stride: 2, rightOffset: 1, frames: count) }
+
+        // …then copy it to every output buffer (multi-output devices).
+        for buffer in outputs {
             guard let data = buffer.mData else { continue }
             let channels = max(1, Int(buffer.mNumberChannels))
             let out = data.assumingMemoryBound(to: Float.self)
             let outFrames = Int(buffer.mDataByteSize) / (MemoryLayout<Float>.size * channels)
-            let count = min(frames, outFrames)
-            var gain = startGain
-            for frame in 0..<count {
-                gain += step
-                let l = clamp(left[frame * stride] * gain * leftPan)
-                let r = clamp(right[frame * stride + rightOffset] * gain * rightPan)
+            let n = min(count, outFrames)
+            for frame in 0..<n {
+                let l = scratch[frame * 2], r = scratch[frame * 2 + 1]
                 let base = frame * channels
                 if channels == 1 {
                     out[base] = (l + r) * 0.5
@@ -134,22 +220,41 @@ final class RenderState: @unchecked Sendable {
                     out[base + 1] = r
                     if channels > 2 { for extra in 2..<channels { out[base + extra] = 0 } }
                 }
-                if bufferIndex == 0 {
-                    peakL = max(peakL, abs(l))
-                    peakR = max(peakR, abs(r))
-                    sumL += l * l
-                    sumR += r * r
-                    measured += 1
-                }
             }
-            if count < outFrames {
-                (out + count * channels).update(repeating: 0, count: (outFrames - count) * channels)
+            if n < outFrames {
+                (out + n * channels).update(repeating: 0, count: (outFrames - n) * channels)
             }
         }
         self[.currentGain] = target
         self[.peakL] = max(self[.peakL], peakL)
         self[.peakR] = max(self[.peakR], peakR)
-        recordRMS(sumL, sumR, frames: measured)
+        recordRMS(sumL, sumR, frames: count)
+    }
+
+    /// Ten biquads in series (Transposed Direct Form II).
+    @inline(__always)
+    private func equalize(_ sample: Float, bank: UnsafeMutablePointer<Float>, channel: Int) -> Float {
+        var x = sample
+        for band in 0..<Self.eqBands {
+            let c = bank + band * 5
+            let z = eqState + (band * 2 + channel) * 2
+            let y = c[0] * x + z[0]
+            z[0] = c[1] * x - c[3] * y + z[1]
+            z[1] = c[2] * x - c[4] * y
+            x = y
+        }
+        return x
+    }
+
+    @inline(__always)
+    private func captureSpectrum(_ samples: UnsafeMutablePointer<Float>, stride: Int, rightOffset: Int, frames: Int) {
+        var index = spectrumWrite.pointee
+        let mask = Self.spectrumCapacity - 1
+        for frame in 0..<frames {
+            spectrum[index & mask] = (samples[frame * stride] + samples[frame * stride + rightOffset]) * 0.5
+            index &+= 1
+        }
+        spectrumWrite.pointee = index
     }
 
     /// Measures the tap's peak level without producing sound (the app keeps playing natively).
@@ -176,6 +281,9 @@ final class RenderState: @unchecked Sendable {
         self[.peakL] = max(self[.peakL], peakL)
         self[.peakR] = max(self[.peakR], peakR)
         recordRMS(sumL, sumR, frames: frames)
+        if self[.spectrumCapture] != 0 {
+            captureSpectrum(samples, stride: channels, rightOffset: channels > 1 ? 1 : 0, frames: frames)
+        }
     }
 
     /// Slow automatic gain control towards a common loudness target.

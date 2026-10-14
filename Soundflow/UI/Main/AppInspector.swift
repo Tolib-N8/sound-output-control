@@ -10,6 +10,7 @@ struct AppInspector: View {
                 header
                 AppVolumeSection(app: app)
                 balance
+                EqualizerView(bundleID: app.bundleID).frame(height: 300)
                 outputs
                 rules
             }

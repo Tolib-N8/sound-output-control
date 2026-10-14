@@ -22,6 +22,8 @@ struct AppRule: Codable, Equatable, Sendable {
     /// Explicit fallback device; nil = use the device priority list.
     var fallbackUID: String?
     var duckDuringCalls = true
+    /// Per-app equalizer; nil = never configured.
+    var eq: EQSettings?
 
     init(volume: Double = 1, muted: Bool = false, outputs: [OutputRef] = []) {
         self.volume = volume
@@ -39,9 +41,10 @@ struct AppRule: Codable, Equatable, Sendable {
         useFallback = try c.decode(Bool.self, forKey: .useFallback, default: true)
         fallbackUID = try c.decodeIfPresent(String.self, forKey: .fallbackUID)
         duckDuringCalls = try c.decode(Bool.self, forKey: .duckDuringCalls, default: true)
+        eq = try c.decodeIfPresent(EQSettings.self, forKey: .eq)
     }
 
-    var isDefault: Bool { volume == 1 && !muted && balance == 0 && outputs.isEmpty }
+    var isDefault: Bool { volume == 1 && !muted && balance == 0 && outputs.isEmpty && eq?.isActive != true }
 }
 
 /// User settings for a hardware device, keyed by UID.
@@ -137,7 +140,21 @@ enum HotkeyAction: String, Codable, CaseIterable, Sendable {
     case openApp, openMap, muteAll
     case volumeUp, volumeDown, muteActive, nextOutputForActive
     case nextMainDevice, switchDevice1, switchDevice2
+    case toggleMiniPlayer
 }
+
+enum VisualizerStyle: String, CaseIterable, Codable, Sendable {
+    case bars, wave, ring
+
+    var title: String {
+        switch self {
+        case .bars: "Бары"
+        case .wave: "Волна"
+        case .ring: "Кольцо"
+        }
+    }
+}
+
 
 enum NoProfileBehavior: String, Codable, Sendable { case lastSettings, defaults }
 
@@ -175,6 +192,11 @@ struct Preferences: Codable, Equatable, Sendable {
     var hiddenApps: [String] = []
     /// Also list apps that have an audio client but haven't made a sound yet (e.g. Terminal).
     var showIdleApps = false
+    var visualizerStyle = VisualizerStyle.bars
+    var miniPlayerVisible = false
+    var miniPlayerCompact = false
+    /// Bottom-left corner of the mini player on screen.
+    var miniPlayerOrigin: [Double]?
 
     static let defaultHotkeys: [HotkeyAction: Hotkey] = [
         .openApp: Hotkey(key: .s, modifiers: [.option, .command]),
@@ -186,6 +208,7 @@ struct Preferences: Codable, Equatable, Sendable {
         .nextMainDevice: Hotkey(key: .o, modifiers: [.control, .option]),
         .switchDevice1: Hotkey(key: .one, modifiers: [.control, .option]),
         .switchDevice2: Hotkey(key: .two, modifiers: [.control, .option]),
+        .toggleMiniPlayer: Hotkey(key: .p, modifiers: [.option, .command]),
     ]
 
     init() {}
@@ -224,6 +247,12 @@ struct Preferences: Codable, Equatable, Sendable {
         deviceHotkeyTargets = try c.decode([HotkeyAction: String].self, forKey: .deviceHotkeyTargets, default: [:])
         hiddenApps = try c.decode([String].self, forKey: .hiddenApps, default: [])
         showIdleApps = try c.decode(Bool.self, forKey: .showIdleApps, default: false)
+        visualizerStyle = try c.decode(VisualizerStyle.self, forKey: .visualizerStyle, default: .bars)
+        miniPlayerVisible = try c.decode(Bool.self, forKey: .miniPlayerVisible, default: false)
+        miniPlayerCompact = try c.decode(Bool.self, forKey: .miniPlayerCompact, default: false)
+        miniPlayerOrigin = try c.decodeIfPresent([Double].self, forKey: .miniPlayerOrigin)
+        // Shortcuts added in later versions get their defaults.
+        for (action, hotkey) in Preferences.defaultHotkeys where hotkeys[action] == nil { hotkeys[action] = hotkey }
     }
 }
 

@@ -107,6 +107,9 @@ struct SoundflowCommands: Commands {
         CommandMenu("Вид") {
             Button("Список") { model.mode = .list; model.selection = nil }.keyboardShortcut("l", modifiers: [.command, .option])
             Button("Карта") { model.mode = .map; model.selection = nil }.keyboardShortcut("m", modifiers: [.command, .shift])
+            Button("Плеер") { model.mode = .player; model.selection = nil }.keyboardShortcut("p", modifiers: [.command, .shift])
+            Divider()
+            Button("Мини-плеер") { MiniPlayer.toggle(model: model) }
         }
         CommandMenu("Профили") {
             ForEach(Array(model.config.profiles.enumerated()), id: \.element.id) { index, profile in

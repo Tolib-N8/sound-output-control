@@ -234,6 +234,7 @@ struct HotkeySettings: View {
                     HotkeyRow(title: "Открыть Soundflow", action: .openApp, first: true)
                     HotkeyRow(title: "Открыть карту вывода", action: .openMap)
                     HotkeyRow(title: "Выключить звук всем", action: .muteAll)
+                    HotkeyRow(title: "Мини-плеер", action: .toggleMiniPlayer)
                 }
                 SettingsGroup(title: "АКТИВНОЕ ПРИЛОЖЕНИЕ") {
                     HotkeyRow(title: "Громче", action: .volumeUp, first: true)

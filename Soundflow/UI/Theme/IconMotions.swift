@@ -465,6 +465,17 @@ enum IconMotions {
             return IconMotion(0.7, whole: { t in PartPose(rotate(10 * wobble(t, 2.5), 3, 21)) })
         case "play":
             return IconMotion(0.45, whole: { t in PartPose(move(1.5 * bump(t), 0).concatenating(scale(1 + 0.15 * bump(t)))) })
+        case "skip-forward", "skip-back":
+            let direction: Double = name == "skip-forward" ? 1 : -1
+            return IconMotion(0.45, part: { i, t in
+                // The triangle darts ahead, the bar follows a beat later.
+                PartPose(move(direction * (i == 0 ? 3 : 1.5) * bump(seg(t, i == 0 ? 0 : 0.1, 1)), 0))
+            })
+        case "picture-in-picture-2":
+            return IconMotion(0.55, part: { i, t in
+                i == 1 ? PartPose(scale(1 + 0.35 * bump(t), nil, 17, 15).concatenating(move(1.2 * bump(t), 1.2 * bump(t))))
+                       : PartPose(scale(1 - 0.05 * bump(t)))
+            })
         case "pause":
             return IconMotion(0.5, part: { i, t in
                 i == 0 ? PartPose(scale(1, 1 - 0.3 * bump(seg(t, 0, 0.5)), 16.5, 12))

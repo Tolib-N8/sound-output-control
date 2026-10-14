@@ -16,12 +16,20 @@ targets:
     platform: macOS
     sources:
       - path: Soundflow
+    dependencies:
+      # Loaded by /usr/bin/perl at runtime (see NowPlayingHelper), so it ships as a resource, not linked.
+      - target: SoundflowNowPlaying
+        link: false
+        embed: true
+        codeSign: true
+        copy:
+          destination: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.tolibnosirov.Soundflow
         PRODUCT_NAME: Soundflow
-        MARKETING_VERSION: "1.1.1"
-        CURRENT_PROJECT_VERSION: "131"
+        MARKETING_VERSION: "1.2.0"
+        CURRENT_PROJECT_VERSION: "140"
         INFOPLIST_FILE: Soundflow/Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: Soundflow/Resources/Soundflow.entitlements
         CODE_SIGN_STYLE: Automatic
@@ -31,6 +39,20 @@ targets:
         COMBINE_HIDPI_IMAGES: YES
         SWIFT_STRICT_CONCURRENCY: complete
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+  SoundflowNowPlaying:
+    type: library.dynamic
+    platform: macOS
+    sources:
+      - path: NowPlayingHelper
+    settings:
+      base:
+        PRODUCT_NAME: SoundflowNowPlaying
+        EXECUTABLE_PREFIX: ""
+        CLANG_ENABLE_OBJC_ARC: YES
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        SKIP_INSTALL: YES
+        OTHER_LDFLAGS: "-framework Foundation"
   SoundflowTests:
     type: bundle.unit-test
     platform: macOS

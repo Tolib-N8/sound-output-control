@@ -30,6 +30,10 @@ extension AppModel {
             return ("\(available) из \(total) устройств доступно", .warning)
         }
         if app.isUsingInput && Self.callApps.contains(app.bundleID) { return ("Звонок", .playing) }
+        // The track from "Now Playing", as in the original design ("Daft Punk — Veridis Quo").
+        if let track = nowPlaying.current, track.bundleID == app.bundleID, !track.title.isEmpty {
+            return ([track.artist, track.title].filter { !$0.isEmpty }.joined(separator: " — "), track.isPlaying ? .playing : .idle)
+        }
         if app.isPlaying { return (app.isHidden ? "В фоне" : "Играет", .playing) }
         return ("Тишина", .idle)
     }

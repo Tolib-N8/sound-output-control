@@ -2,7 +2,7 @@ import AppKit
 import Observation
 import SwiftUI
 
-enum MainMode: String { case list, map }
+enum MainMode: String { case list, map, player }
 
 enum Selection: Hashable {
     case app(String)
@@ -53,6 +53,7 @@ final class AppModel {
     let engine: AudioEngine
     let battery: BluetoothInfo
     let updater = Updater()
+    let nowPlaying = NowPlayingService()
     @ObservationIgnored lazy var profiles = ProfileManager(model: self)
     @ObservationIgnored lazy var hotkeys = HotkeyManager(model: self)
 
@@ -109,6 +110,9 @@ final class AppModel {
         hotkeys.registerAll()
         battery.start(model: self)
         updater.start(model: self)
+        nowPlaying.onSourceChange = { [weak self] bundleID in self?.engine.spectrumTarget = bundleID }
+        nowPlaying.start()
+        if config.prefs.miniPlayerVisible { MiniPlayer.show(model: self) }
         applyDockIcon()
     }
 
@@ -506,6 +510,8 @@ final class AppModel {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [self] in
             switch parts[0] {
             case "map": mode = .map
+            case "player": mode = .player
+            case "mini": MiniPlayer.show(model: self)
             case "app": selection = apps.first.map { .app($0.bundleID) }
             case "device": selection = visibleDevices.first.map { .device($0.uid) }
             case "multi": multiOutputDraft = MultiOutput(name: "Колонки + наушники", deviceUIDs: visibleDevices.prefix(2).map(\.uid))
@@ -559,6 +565,7 @@ final class AppModel {
     }
 
     func shutdown() {
+        nowPlaying.stop()
         store.saveNow()
         engine.shutdown()
     }

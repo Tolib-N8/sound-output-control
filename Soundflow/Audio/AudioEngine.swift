@@ -99,9 +99,28 @@ final class AudioEngine {
     private(set) var stats = Stats()
     private(set) var permission: AudioCapturePermission = PermissionService.audioCapture
     var enabled = true
-    /// Meter every playing app (not only routed ones) while a window shows level indicators.
-    var meteringEnabled = false {
-        didSet { if oldValue != meteringEnabled, let lastInput { reconcile(lastInput) } }
+    /// Surfaces currently showing level indicators (main window, menu bar, mini player).
+    /// While any is visible, every playing app is metered, not only routed ones.
+    private var meteringConsumers: Set<String> = []
+    var meteringEnabled: Bool { !meteringConsumers.isEmpty }
+
+    func setMeteringConsumer(_ id: String, active: Bool) {
+        let before = meteringEnabled
+        if active { meteringConsumers.insert(id) } else { meteringConsumers.remove(id) }
+        if before != meteringEnabled, let lastInput { reconcile(lastInput) }
+    }
+
+    /// The app whose samples feed the spectrum visualizer.
+    var spectrumTarget: String? {
+        didSet {
+            guard spectrumTarget != oldValue else { return }
+            for (bundleID, state) in states { state.capturesSpectrum = bundleID == spectrumTarget }
+        }
+    }
+
+    /// Render state of an app (for the spectrum analyzer); nil when Soundflow doesn't capture it.
+    func renderState(_ bundleID: String) -> RenderState? {
+        statuses[bundleID]?.hasLevel == true ? states[bundleID] : nil
     }
     /// Keeps metering briefly after an app goes quiet so short pauses don't churn taps.
     @ObservationIgnored private var lastHeard: [String: Date] = [:]
@@ -171,6 +190,12 @@ final class AudioEngine {
             state.targetGain = Float(rule.muted || waiting ? 0 : volume * duck)
             state.balance = Float(rule.balance)
             state.normalize = prefs.normalize
+            state.capturesSpectrum = app.bundleID == spectrumTarget
+            if let eq = rule.eq, eq.isActive, let clock = route.outputs.first {
+                state.setEqualizer(Equalizer.filters(for: eq, sampleRate: rates[clock] ?? 48000))
+            } else {
+                state.setEqualizer(nil)
+            }
 
             if app.isPlaying { lastHeard[app.bundleID] = Date() }
             let recentlyHeard = lastHeard[app.bundleID].map { Date().timeIntervalSince($0) < 10 } ?? false

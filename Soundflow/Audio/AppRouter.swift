@@ -124,6 +124,7 @@ final class AppRouter: @unchecked Sendable {
         let rate: Float64 = (try? CA.get(aggregateID, .init(kAudioDevicePropertyNominalSampleRate), default: Float64(48000))) ?? 48000
         let frames: UInt32 = (try? CA.get(aggregateID, .init(kAudioDevicePropertyBufferFrameSize), default: UInt32(512))) ?? 512
         state.budgetNanos = Float(Double(frames) / rate * 1_000_000_000)
+        state.sampleRate = rate
         let outputLatency: UInt32 = (try? CA.get(aggregateID, .init(kAudioDevicePropertyLatency, kAudioObjectPropertyScopeOutput), default: UInt32(0))) ?? 0
         let safety: UInt32 = (try? CA.get(aggregateID, .init(kAudioDevicePropertySafetyOffset, kAudioObjectPropertyScopeOutput), default: UInt32(0))) ?? 0
         latencyMs = Double(frames + outputLatency + safety) / rate * 1000
